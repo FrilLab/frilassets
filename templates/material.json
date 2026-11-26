@@ -1,0 +1,24 @@
+{
+  "name": "Material name",
+  "baseColorFactor": [
+    1,
+    1,
+    1,
+    1
+  ],
+  "metallicFactor": 0,
+  "roughnessFactor": 0.85,
+  "normalScale": 1,
+  "repeatSizeMeters": null,
+  "maps": {
+    "baseColor": {
+      "path": "maps/basecolor.webp",
+      "colorSpace": "srgb"
+    },
+    "normal": {
+      "path": "maps/normal.png",
+      "colorSpace": "linear",
+      "convention": "OpenGL +Y"
+    }
+  }
+}

@@ -1,18 +1,24 @@
 # FrilAssets
 
-Free CC0 3D assets, crafted with AI and optimized for the web.
+Free, AI-assisted digital assets optimized for the web, with reviewed assets released under CC0.
 
-An independent asset-production workspace. No assets have been released yet.
+An independent asset-production workspace for 3D models, materials, textures, illustrations, backgrounds, and lighting environments. No assets are currently released in this repository.
 
 ## Layout
 
-- `assets/`: categorized, reviewed asset packages.
+- `assets/`: categorized 3D models; existing paths remain unchanged.
+- `materials/`: reusable material definitions and their aligned texture maps.
+- `textures/`: standalone surface textures, patterns, and ornaments.
+- `images/`: illustrations, backgrounds, botanical and decorative images.
+- `environments/`: studio and outdoor environment assets.
 - `scripts/`: shared Blender and validation utilities.
 - `viewer/`: reserved for a standalone preview tool.
 - `templates/`: asset metadata and publication templates.
 - `docs/`: production and publication conventions.
 
-See [asset layout](docs/asset-layout.md) and [agent rules](AGENTS.md).
+See [asset layout](docs/asset-layout.md), [material and texture guidelines](docs/materials-and-textures.md), [image and environment guidelines](docs/images-and-environments.md), [production workflow](docs/production-workflow.md), [publication guidelines](docs/publication.md), and [Collection 001](docs/collections/wedding-stationery.md).
+
+FrilStudio, FrilCraft, and FrilRemotion are intended consumers, not runtime dependencies. No installation registry or viewer is implemented yet.
 
 ## Licensing
 

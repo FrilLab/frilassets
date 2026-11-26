@@ -17,3 +17,8 @@
 - Keep assembled assets in one self-contained GLB by default, with independently addressable movable parts, stable node names, pivots, and material slots. Export separate parts only when independent reuse or distribution requires it.
 - Use neutral base-color maps or no color map for recolorable surfaces. Keep decorative artwork and surface detail independent. Preserve UVs and independently customizable material groups.
 - Verify actual exported runtime recoloring, material replacement, texture application, and motion when applicable. Record results without claiming unperformed checks.
+
+## Search first, create last
+
+- Before generating any asset, follow `docs/asset-sourcing.md`: search existing local packages, then suitable external CC0 sources. Record candidates, license evidence, suitability and the reuse/adapt/create decision. Do not commission generation merely to duplicate a suitable existing asset.
+- If search access is unavailable, report the blocker; do not claim that no suitable asset exists. Never download or republish uncleared assets or describe third-party work as original FrilAssets work.

@@ -9,3 +9,5 @@ Inspect actual renders or images, record measured validation results, and leave 
 See `docs/production-workflow.md` for the review gates and `docs/collections/wedding-stationery.md` for the first proposed collection.
 
 For every 3D task, follow `docs/modeling-and-customization.md`. Keep envelope, flap, letter, and optional seal in one assembly GLB; do not duplicate geometry for color variants. Use neutral textures, stable semantic material slots, explicit pivots, and a separate letter-front content surface. Keep standalone seal or letter exports optional rather than mandatory. Test the exported GLB, not just the Blender source.
+
+Before any image or model generation, perform the sourcing gate in `docs/asset-sourcing.md`. Prefer reuse, then adaptation, then original creation. Do not generate new assets when a suitable CC0 package already exists. Record sources and decisions in the asset notes; if web access is unavailable, stop at the sourcing blocker and report it.

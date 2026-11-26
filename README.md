@@ -23,3 +23,7 @@ FrilStudio, FrilCraft, and FrilRemotion are intended consumers, not runtime depe
 ## Licensing
 
 The existing MIT LICENSE covers repository software and documentation. Only asset files explicitly designated CC0-1.0 in an asset manifest are offered under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). Review rights and provenance before publication; third-party rights are not waived.
+
+## Sourcing policy
+
+Search first, create last. Reuse suitable existing CC0 assets before spending resources on generation. See [asset sourcing](docs/asset-sourcing.md) for the required discovery and provenance gate.

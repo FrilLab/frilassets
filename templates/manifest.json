@@ -1,0 +1,26 @@
+{
+  "id": "category/asset-slug",
+  "name": "Asset name",
+  "version": "0.1.0",
+  "status": "draft",
+  "assetLicense": null,
+  "codeLicense": "MIT",
+  "aiAssisted": true,
+  "provenance": [],
+  "files": {
+    "source": "model.blend",
+    "generator": "generate.py",
+    "glb": "model.glb",
+    "preview": "preview.webp"
+  },
+  "dimensionsMeters": null,
+  "triangleCount": null,
+  "validation": {
+    "visualReview": false,
+    "glbLoad": false,
+    "rightsReview": false
+  },
+  "publication": {
+    "sketchfabUrl": null
+  }
+}

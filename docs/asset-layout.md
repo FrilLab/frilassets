@@ -45,3 +45,7 @@ Use `templates/manifest.json` for existing model packages and `templates/digital
 Do not commit temporary renders or Blender backups. Use `.work/` for local experiments; ignored files are not a privacy boundary. Review public content before committing. For large binaries, decide on Git LFS or release storage before committing; neither is configured yet.
 
 For models, use meters and document axes, origin, dimensions and movable parts. Validate GLB loading and inspect visual quality and mobile cost. Record license, source provenance, AI assistance, version and validation status. Only reviewed assets may be released as CC0. See [publication](publication.md).
+
+## Model packaging
+
+One assembled GLB may contain multiple meshes, material slots, nodes and animation clips. Keep parts in that assembly by default. Separate files are optional for independently consumed assets, not required for independent transforms or colors. Keep the canonical generator/source authoritative and document derived exports and versioned dependencies. See [modeling and customization](modeling-and-customization.md).

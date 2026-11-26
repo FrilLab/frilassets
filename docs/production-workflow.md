@@ -11,3 +11,5 @@
 Start with the source and a small preview before expanding variants. Use higher reasoning effort only for difficult geometry or debugging when available; visual verification remains mandatory.
 
 No generation pipeline, package installer, automatic validation, or publication automation is provided by this scaffold. Suggested checks are manual until tooling is implemented.
+
+For customizable 3D assets, include the exported-runtime checks described in [modeling and customization](modeling-and-customization.md). Check two differently colored instances when instance isolation matters. Do not mark runtime validation successful from Blender renders alone.

@@ -9,3 +9,11 @@
 - Never include secrets, private client media, unlicensed references or third-party content without compatible rights. Only mark reviewed assets CC0. A public branch is already public; keep uncleared source material local. Do not publish to Sketchfab or other external platforms without approval.
 - Keep public documentation in English. Do not claim unimplemented tools or unverified results.
 - Preserve existing model paths and public mesh names. Do not change shared material files when a model-specific adjustment is sufficient. Document versioned dependencies and do not reference mutable remote URLs at runtime.
+
+## Reusable model contract
+
+- Read `docs/modeling-and-customization.md` before authoring or modifying 3D models.
+- Separate geometry, materials, textures, and animation. Do not create duplicate GLBs for color or material variants.
+- Keep assembled assets in one self-contained GLB by default, with independently addressable movable parts, stable node names, pivots, and material slots. Export separate parts only when independent reuse or distribution requires it.
+- Use neutral base-color maps or no color map for recolorable surfaces. Keep decorative artwork and surface detail independent. Preserve UVs and independently customizable material groups.
+- Verify actual exported runtime recoloring, material replacement, texture application, and motion when applicable. Record results without claiming unperformed checks.

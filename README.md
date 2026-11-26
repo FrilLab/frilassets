@@ -16,7 +16,7 @@ An independent asset-production workspace for 3D models, materials, textures, il
 - `templates/`: asset metadata and publication templates.
 - `docs/`: production and publication conventions.
 
-See [asset layout](docs/asset-layout.md), [material and texture guidelines](docs/materials-and-textures.md), [image and environment guidelines](docs/images-and-environments.md), [production workflow](docs/production-workflow.md), [publication guidelines](docs/publication.md), and [Collection 001](docs/collections/wedding-stationery.md).
+See [asset layout](docs/asset-layout.md), [reusable model and customization guidelines](docs/modeling-and-customization.md), [material and texture guidelines](docs/materials-and-textures.md), [image and environment guidelines](docs/images-and-environments.md), [production workflow](docs/production-workflow.md), [publication guidelines](docs/publication.md), and [Collection 001](docs/collections/wedding-stationery.md).
 
 FrilStudio, FrilCraft, and FrilRemotion are intended consumers, not runtime dependencies. No installation registry or viewer is implemented yet.
 

@@ -16,3 +16,7 @@ Proposed production backlog, not a list of released assets. Begin with the exist
 Art direction: warm ivory, cream, soft botanical greens, muted champagne accents, restrained editorial composition. Avoid baked invitation text and unnecessary ornament. Each item needs independent source, preview, metadata and applicable review before publication.
 
 Consumers may reuse individual packages; do not require the complete collection to load one asset.
+
+## Envelope assembly contract
+
+Keep envelope body, flap, letter card and optional wax seal in one GLB with independent transforms and material groups. Reuse a single geometry for color presets. Use a neutral paper texture and a separately addressable front card artwork slot; do not bake invitation text. The initial seal may use one original botanical motif. Additional seal designs are optional geometry or relief-map variants, not color duplicates. Standalone seal exports are optional when a consumer needs them. Preserve the existing asset path and published object names; see [model customization](../modeling-and-customization.md). This is a specification, not a claim that the model exists or passes tests.

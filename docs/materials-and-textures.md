@@ -20,3 +20,9 @@ A texture is image data; a material defines how a surface responds to light usin
 Use `templates/material.json` as a descriptive starting point, not an implemented loader contract. Relative map paths are local to the material package. Remove entries for maps not supplied and record actual parameters.
 
 Validate on a flat surface, a sphere, and a representative object. Compare Blender and Three.js under controlled lighting when both are available. Report unperformed checks explicitly. Aim for subtle surface variation rather than noisy, exaggerated bumps.
+
+## Runtime customization
+
+For arbitrary recoloring, prefer no base-color texture or a neutral near-white texture with subtle surface variation. glTF base color factors multiply the sampled base-color texture; a saturated baked color cannot be reliably recolored to arbitrary hues. Keep normals and roughness independent. Do not bake lighting into recolorable surfaces. Preserve intentionally colored illustrations as separate artwork, with separate UV mapping or material slots where needed.
+
+Use parameter presets for color and finish variants rather than duplicate geometry or GLB files. A material library package is justified by reusable surface data or a distinct physical finish, not merely a new hex color. Consumers should clone mutable shared materials per instance or customization group and dispose owned clones on teardown, without disposing shared textures. For example, body and flap can intentionally share one exterior material; the letter and wax seal must not share that mutable material. See [modeling and customization](modeling-and-customization.md).

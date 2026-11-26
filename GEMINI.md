@@ -7,3 +7,9 @@ Create one asset at a time in its own category and slug directory. For models, p
 Inspect actual renders or images, record measured validation results, and leave the asset unreleased until review. Do not change other repositories or install dependencies without approval. Keep experiments in local `.work/`; ignored files are not a security boundary.
 
 See `docs/production-workflow.md` for the review gates and `docs/collections/wedding-stationery.md` for the first proposed collection.
+
+For every 3D task, follow `docs/modeling-and-customization.md`. Keep envelope, flap, letter, and optional seal in one assembly GLB; do not duplicate geometry for color variants. Use neutral textures, stable semantic material slots, explicit pivots, and a separate letter-front content surface. Keep standalone seal or letter exports optional rather than mandatory. Test the exported GLB, not just the Blender source.
+
+Before any image or model generation, perform the sourcing gate in `docs/asset-sourcing.md`. Prefer reuse, then adaptation, then original creation. Do not generate new assets when a suitable CC0 package already exists. Record sources and decisions in the asset notes; if web access is unavailable, stop at the sourcing blocker and report it.
+
+Before committing an asset, apply `docs/asset-file-policy.md`. Write additional validation renders and temporary masks to `.work/<asset-id>/`, not the tracked package. Preserve one catalog preview and all necessary source dependencies. List tracked files, consumer files and measured sizes; do not claim reproducibility without a clean-checkout test. Do not delete existing user work or alter model behavior merely to clean up files.

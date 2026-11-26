@@ -9,3 +9,22 @@
 - Never include secrets, private client media, unlicensed references or third-party content without compatible rights. Only mark reviewed assets CC0. A public branch is already public; keep uncleared source material local. Do not publish to Sketchfab or other external platforms without approval.
 - Keep public documentation in English. Do not claim unimplemented tools or unverified results.
 - Preserve existing model paths and public mesh names. Do not change shared material files when a model-specific adjustment is sufficient. Document versioned dependencies and do not reference mutable remote URLs at runtime.
+
+## Reusable model contract
+
+- Read `docs/modeling-and-customization.md` before authoring or modifying 3D models.
+- Separate geometry, materials, textures, and animation. Do not create duplicate GLBs for color or material variants.
+- Keep assembled assets in one self-contained GLB by default, with independently addressable movable parts, stable node names, pivots, and material slots. Export separate parts only when independent reuse or distribution requires it.
+- Use neutral base-color maps or no color map for recolorable surfaces. Keep decorative artwork and surface detail independent. Preserve UVs and independently customizable material groups.
+- Verify actual exported runtime recoloring, material replacement, texture application, and motion when applicable. Record results without claiming unperformed checks.
+
+## Search first, create last
+
+- Before generating any asset, follow `docs/asset-sourcing.md`: search existing local packages, then suitable external CC0 sources. Record candidates, license evidence, suitability and the reuse/adapt/create decision. Do not commission generation merely to duplicate a suitable existing asset.
+- If search access is unavailable, report the blocker; do not claim that no suitable asset exists. Never download or republish uncleared assets or describe third-party work as original FrilAssets work.
+
+## Repository hygiene
+
+- Follow `docs/asset-file-policy.md`. Track canonical source, required regeneration/editing dependencies, runtime deliverables, metadata, license evidence, and one catalog preview by default.
+- Put intermediate renders, diagnostic previews and regenerable temporary files in the ignored root `.work/` directory. Never delete irreplaceable sources or required dependencies to reduce file count.
+- Verify dependency closure before removing tracked files; report unperformed clean-checkout tests. Keep runtime distribution separate from authoring and validation files.

@@ -1,0 +1,33 @@
+{
+  "id": "materials/paper/example",
+  "type": "material",
+  "name": "Asset name",
+  "version": "0.1.0",
+  "status": "draft",
+  "assetLicense": null,
+  "assetLicenseFiles": [],
+  "codeLicense": "MIT",
+  "aiAssisted": true,
+  "provenance": [],
+  "generation": {
+    "tool": null,
+    "model": null,
+    "prompt": null,
+    "notes": null
+  },
+  "files": {
+    "source": [],
+    "deliverables": [],
+    "preview": []
+  },
+  "dependencies": [],
+  "validation": {
+    "visualReview": false,
+    "technicalReview": false,
+    "rightsReview": false,
+    "notes": []
+  },
+  "publication": {
+    "urls": []
+  }
+}

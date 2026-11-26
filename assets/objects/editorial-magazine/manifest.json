@@ -1,0 +1,495 @@
+{
+  "id": "objects/editorial-magazine",
+  "name": "Editorial Magazine",
+  "version": "0.1.0",
+  "status": "draft",
+  "assetLicense": null,
+  "licenseNotes": "Draft \u2014 unreleased pending human visual, technical, and rights review. Procedural geometry, spectral PBR textures, Elastica skeletal rig, and reference controller authored originally with zero third-party meshes, fonts, or images. Generator, controller, and validation scripts retain the repository MIT license.",
+  "codeLicense": "MIT",
+  "aiAssisted": true,
+  "sourcing": {
+    "decision": "create",
+    "checkedDate": "2026-11-26",
+    "localSearch": "Searched FrilAssets (assets/, materials/paper/, textures/, images/) and sibling FrilStudio/FrilCraft/FrilRemotion/FrilAdd repositories read-only. No existing editorial magazine model or coated paper PBR package exists.",
+    "externalEvaluation": "Evaluated Poly Haven (decorative_book_set_01, CC0), ambientCG (Paper001, Paper005, Paper006, CC0), and Sketchfab downloadable CC0 models per docs/asset-sourcing.md. Existing CC0 book models are static closed props with baked covers, and ambientCG paper maps represent uncoated office or kraft packaging paper rather than 135 gsm silk-matte interior stock, 280 gsm satin cover stock, and 0.15 mm layered trimmed paper-block edges. Authored deterministic procedural geometry, coherent spectral PBR maps, bind-space Thickness_Scale morph targets, and length-preserving Elastica skeletal animation in generate.py."
+  },
+  "toolchain": {
+    "blender": "5.2.2 LTS (build 2026-09-15, macOS arm64 Metal)",
+    "blenderPython": "3.13.13",
+    "numpy": "2.3.4",
+    "node": "v26.12.1",
+    "three": "0.186.1",
+    "playwright": "1.64.1",
+    "reproducibilityConstraint": "Bit-for-bit reproduction of model.glb SHA-256 (e1f8298778aa95a98d6ac9e055f01f31078f94ac250f5d42a378c4a750736260) requires Blender 5.2.2 LTS glTF 2.0 exporter with Python 3.13.13 and NumPy 2.3.4."
+  },
+  "provenance": [
+    {
+      "type": "procedural-blender-python",
+      "tool": "Blender 5.2.2 LTS (Python 3.13.13 / bpy / bmesh / mathutils / Cycles Metal) + NumPy 2.3.4",
+      "script": "generate.py",
+      "thirdPartyContent": false,
+      "notes": "Deterministically synthesizes 7 coherent periodic spectral-heightfield PBR paper and layered-edge PNG maps into textures/, constructs the A4 (210 x 297 mm) perfect-bound magazine assembly with bind-space Thickness_Scale morph targets and 233-bone Elastica skeletal rig, bakes 6 complete lifecycle slotted actions (Magazine_Open, Magazine_PageTurn, Magazine_PageTurn_Back, Magazine_Close, Magazine_Close_Back, Magazine_Open_Back), exports and post-compacts self-contained model.glb (isolating Magazine_PageTurn and Magazine_PageTurn_Back strictly to 33 channels), renders preview.webp, and saves relative-path model.blend."
+    },
+    {
+      "type": "reference-runtime-controller",
+      "tool": "Three.js ES Module (three@0.186.1 GLTFLoader / SkeletonUtils / WebGLRenderer)",
+      "script": "magazine_controller.mjs",
+      "thirdPartyContent": false,
+      "notes": "Reusable asset-level reference controller providing configurable even interior page counts (verified across 4, 10, 24, 50, 100, and 200 pages), dynamic stack thickness via Thickness_Scale morph targets, front/back cover open/close, forward/backward turns, normalized [0, 1] progress, pause/resume/reverse/cancel/commit, per-instance material isolation, and bounded 16-page LRU GPU texture caching."
+    }
+  ],
+  "files": {
+    "generator": "generate.py",
+    "source": "model.blend",
+    "glb": "model.glb",
+    "preview": "preview.webp",
+    "notes": "notes.md",
+    "texturesDir": "textures",
+    "runtimeController": "magazine_controller.mjs",
+    "blenderValidator": "validate_blender.py",
+    "threeJsValidator": "validate_threejs.mjs"
+  },
+  "distribution": {
+    "staticViewingFiles": [
+      {
+        "path": "model.glb",
+        "required": true,
+        "sizeBytes": 3754828,
+        "sha256": "e1f8298778aa95a98d6ac9e055f01f31078f94ac250f5d42a378c4a750736260",
+        "notes": "Self-contained glTF 2.0 binary (+Y up, meters) embedding all 7 lossless PBR paper/edge maps, 11 semantic material slots, UVMap (TEXCOORD_0) + UVMap_Detail (TEXCOORD_1), Thickness_Scale morph targets, 233-joint skinning data, and 6 standalone 2-second lifecycle animation clips."
+      }
+    ],
+    "interactiveRuntimeFiles": [
+      {
+        "path": "model.glb",
+        "required": true,
+        "sizeBytes": 3754828,
+        "sha256": "e1f8298778aa95a98d6ac9e055f01f31078f94ac250f5d42a378c4a750736260"
+      },
+      {
+        "path": "magazine_controller.mjs",
+        "required": true,
+        "sizeBytes": 46142,
+        "sha256": "90f37afcc509bc1c57d08b8e7625272d3694dce0ac0acac2484c9758250be427",
+        "peerDependencies": [
+          "three@^0.186.1"
+        ],
+        "notes": "Reference runtime controller (or compatible consumer implementation) plus consumer-supplied cover/page artwork, runtime configuration, and applicable license notices upon release."
+      }
+    ],
+    "catalogFiles": [
+      {
+        "path": "preview.webp",
+        "sizeBytes": 19474,
+        "sha256": "22b437ddbd7e979497e68a95d4add2c2a6063a4decfb41942f0c0592e6b7e4c2"
+      },
+      {
+        "path": "manifest.json"
+      },
+      {
+        "path": "notes.md",
+        "sizeBytes": 18526,
+        "sha256": "c6728b86d13e584637b74ef6f9aaf08a3c07e356867081f228a9719508cc782f"
+      }
+    ],
+    "authoringDependencies": [
+      {
+        "path": "generate.py",
+        "sizeBytes": 98227,
+        "sha256": "3bc2c308862b3e72e7a420710f0959aa37835558bcc3542ce007c907477d6771"
+      },
+      {
+        "path": "model.blend",
+        "sizeBytes": 1388733,
+        "sha256": "3d851ee100a04fb4a2a4d0aee3e76e8b3df0a7d59f0535d7ae3361bfb39cc5fa"
+      },
+      {
+        "path": "textures/paper_interior_normal.png",
+        "sizeBytes": 169561,
+        "sha256": "13183d4cdc0a943ec7fd1f4bdeea22bbea8bfe9123ea105b8ec636f511f3e944",
+        "resolution": [
+          256,
+          256
+        ],
+        "colorSpace": "Non-Color (Linear OpenGL +Y)"
+      },
+      {
+        "path": "textures/paper_interior_roughness.png",
+        "sizeBytes": 58660,
+        "sha256": "c49a8c180e452dc398ca2bac7bb08398e39b2b26c36d44c9fdf154ca499e2053",
+        "resolution": [
+          256,
+          256
+        ],
+        "colorSpace": "Non-Color (Linear)"
+      },
+      {
+        "path": "textures/paper_cover_normal.png",
+        "sizeBytes": 157353,
+        "sha256": "2cb31f2386b472f03033ea76e9a2f0b3483079820f93dd89d916165841cff3a4",
+        "resolution": [
+          256,
+          256
+        ],
+        "colorSpace": "Non-Color (Linear OpenGL +Y)"
+      },
+      {
+        "path": "textures/paper_cover_roughness.png",
+        "sizeBytes": 54003,
+        "sha256": "c15fddda87d4354d22d406e77d031c4e96fd0f8c5492c34b63ecca8a1bb5cff7",
+        "resolution": [
+          256,
+          256
+        ],
+        "colorSpace": "Non-Color (Linear)"
+      },
+      {
+        "path": "textures/paper_edge_basecolor.png",
+        "sizeBytes": 227723,
+        "sha256": "820092ef703b4f715017cb93e531ed320c2ef2007c5efa74385778d66e0f4987",
+        "resolution": [
+          512,
+          512
+        ],
+        "colorSpace": "sRGB"
+      },
+      {
+        "path": "textures/paper_edge_normal.png",
+        "sizeBytes": 616211,
+        "sha256": "0b4bcfe3a6ead724aa752a3add7cf21ce5422c353675299aa87448db642b9305",
+        "resolution": [
+          512,
+          512
+        ],
+        "colorSpace": "Non-Color (Linear OpenGL +Y)"
+      },
+      {
+        "path": "textures/paper_edge_roughness.png",
+        "sizeBytes": 215644,
+        "sha256": "86a03e3811a71e1cea2a2fcca7d1cd9d85434733ba95ecb352b761aad0d404a1",
+        "resolution": [
+          512,
+          512
+        ],
+        "colorSpace": "Non-Color (Linear)"
+      },
+      {
+        "path": "validate_blender.py",
+        "sizeBytes": 17668,
+        "sha256": "f7497c5378757d75c3932f2e9ec83a92651c176adefc5a35408d45222d31f952"
+      },
+      {
+        "path": "validate_threejs.mjs",
+        "sizeBytes": 65427,
+        "sha256": "70fe0c5648a18e59315d268edec43c76f995e1b820d3337bf57f9d90ce30fe21"
+      }
+    ],
+    "localIgnoredWorkspace": ".work/objects/editorial-magazine/ (diagnostic 12-view editorial & blank studio renders, asymmetric UV calibration charts, 9 Three.js WebGL acceptance screenshots, 1.0x normal-speed MP4 demo, 100-page bidirectional lifecycle MP4 demo, and validation JSON reports)"
+  },
+  "coordinateSystem": {
+    "units": "meters",
+    "exportedGltf": {
+      "x": "+X right (right-hand spread / closed front fore-edge), -X left (left-hand spread / closed back fore-edge)",
+      "y": "+Y up (vertical height above resting surface Y = 0)",
+      "z": "-Z head/top edge of page (V=1), +Z foot/bottom edge of page toward viewer (V=0)",
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "originDescription": "Resting tabletop plane (Y = 0) at the longitudinal and lateral center of the binding (Magazine_Root)."
+    }
+  },
+  "dimensionsMeters": {
+    "singlePageNominal": {
+      "width": 0.21,
+      "height": 0.297,
+      "coverCaliper": 0.00032,
+      "interiorLeafCaliper": 0.000145,
+      "baselinePrintedInteriorPages": 56,
+      "baselinePhysicalLeaves": 28,
+      "configurableEvenInteriorPagesVerified": [
+        4,
+        10,
+        24,
+        50,
+        100,
+        200
+      ]
+    },
+    "closedMeasuredGltf": {
+      "widthX": 0.21074,
+      "heightY": 0.00579,
+      "depthZ": 0.2971,
+      "heightY100Pages": 0.009311,
+      "heightY200Pages": 0.017461
+    },
+    "openSpreadNominalWidth": 0.42,
+    "openSpreadMeasuredGltf": {
+      "widthX": 0.4249,
+      "archHeightY": 0.01581,
+      "depthZ": 0.2971
+    }
+  },
+  "parts": [
+    {
+      "name": "Magazine_Root",
+      "type": "Object3D",
+      "originGltf": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "Binding",
+      "triangles": 1096,
+      "vertices": 618,
+      "morphTargets": [],
+      "materials": [
+        "Mat_Spine_Exterior",
+        "Mat_Paper_Interior"
+      ]
+    },
+    {
+      "name": "Cover_Front",
+      "triangles": 2460,
+      "vertices": 1500,
+      "morphTargets": [
+        "Thickness_Scale"
+      ],
+      "materials": [
+        "Mat_Cover_Front_Outer",
+        "Mat_Cover_Front_Inner",
+        "Mat_Paper_Edges"
+      ]
+    },
+    {
+      "name": "Cover_Back",
+      "triangles": 2460,
+      "vertices": 1500,
+      "morphTargets": [
+        "Thickness_Scale"
+      ],
+      "materials": [
+        "Mat_Cover_Back_Inner",
+        "Mat_Cover_Back_Outer",
+        "Mat_Paper_Edges"
+      ]
+    },
+    {
+      "name": "Pages_Block_Left",
+      "triangles": 4280,
+      "vertices": 2420,
+      "morphTargets": [
+        "Thickness_Scale"
+      ],
+      "materials": [
+        "Mat_Paper_Interior",
+        "Mat_Paper_Edges"
+      ]
+    },
+    {
+      "name": "Pages_Block_Right",
+      "triangles": 4280,
+      "vertices": 2420,
+      "morphTargets": [
+        "Thickness_Scale"
+      ],
+      "materials": [
+        "Mat_Paper_Interior",
+        "Mat_Paper_Edges"
+      ]
+    },
+    {
+      "name": "Page_Left",
+      "triangles": 2460,
+      "vertices": 1518,
+      "morphTargets": [
+        "Thickness_Scale"
+      ],
+      "materials": [
+        "Mat_Paper_Interior",
+        "Mat_Page_Left",
+        "Mat_Paper_Edges"
+      ]
+    },
+    {
+      "name": "Page_Right",
+      "triangles": 2460,
+      "vertices": 1518,
+      "morphTargets": [
+        "Thickness_Scale"
+      ],
+      "materials": [
+        "Mat_Page_Right",
+        "Mat_Paper_Interior",
+        "Mat_Paper_Edges"
+      ]
+    },
+    {
+      "name": "Page_Turning",
+      "triangles": 2460,
+      "vertices": 1518,
+      "morphTargets": [
+        "Thickness_Scale"
+      ],
+      "materials": [
+        "Mat_Page_Turning_Front",
+        "Mat_Page_Turning_Back",
+        "Mat_Paper_Edges"
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "name": "Magazine_Open",
+      "durationSeconds": 2.0,
+      "frames": 61,
+      "channels": 240,
+      "role": "Front cover opening (closed front on +X -> open spread)",
+      "targetChains": [
+        "Spine",
+        "Cover_Back",
+        "Cover_Front",
+        "Pages_Block_Left",
+        "Pages_Block_Right",
+        "Page_Left",
+        "Page_Right",
+        "Page_Turning"
+      ],
+      "maxCenterlineArcErrorPctGltf": 0.03074,
+      "bvhIntersectionsAcross101Samples": 0
+    },
+    {
+      "name": "Magazine_Close",
+      "durationSeconds": 2.0,
+      "frames": 61,
+      "channels": 240,
+      "role": "Front cover closing (open spread -> closed front on +X)",
+      "targetChains": [
+        "Spine",
+        "Cover_Back",
+        "Cover_Front",
+        "Pages_Block_Left",
+        "Pages_Block_Right",
+        "Page_Left",
+        "Page_Right",
+        "Page_Turning"
+      ],
+      "maxCenterlineArcErrorPctGltf": 0.03074,
+      "bvhIntersectionsAcross101Samples": 0
+    },
+    {
+      "name": "Magazine_PageTurn",
+      "durationSeconds": 2.0,
+      "frames": 61,
+      "channels": 33,
+      "role": "Forward page turning (+X -> -X), strictly isolated to Page_Turning",
+      "targetChains": [
+        "Page_Turning"
+      ],
+      "unrelatedNodeDriftMm": 0.0,
+      "maxCenterlineArcErrorPctGltf": 0.01055,
+      "bvhIntersectionsAcross101Samples": 0
+    },
+    {
+      "name": "Magazine_PageTurn_Back",
+      "durationSeconds": 2.0,
+      "frames": 61,
+      "channels": 33,
+      "role": "Backward page turning (-X -> +X), strictly isolated to Page_Turning",
+      "targetChains": [
+        "Page_Turning"
+      ],
+      "unrelatedNodeDriftMm": 0.0,
+      "maxCenterlineArcErrorPctGltf": 0.01055,
+      "bvhIntersectionsAcross101Samples": 0
+    },
+    {
+      "name": "Magazine_Close_Back",
+      "durationSeconds": 2.0,
+      "frames": 61,
+      "channels": 240,
+      "role": "Dedicated back cover closing (final spread -> closed on -X with Cover_Back exterior visible on top)",
+      "targetChains": [
+        "Spine",
+        "Cover_Back",
+        "Cover_Front",
+        "Pages_Block_Left",
+        "Pages_Block_Right",
+        "Page_Left",
+        "Page_Right",
+        "Page_Turning"
+      ],
+      "maxCenterlineArcErrorPctGltf": 0.03084,
+      "bvhIntersectionsAcross101Samples": 0
+    },
+    {
+      "name": "Magazine_Open_Back",
+      "durationSeconds": 2.0,
+      "frames": 61,
+      "channels": 240,
+      "role": "Dedicated back cover opening (closed back cover on -X -> final spread)",
+      "targetChains": [
+        "Spine",
+        "Cover_Back",
+        "Cover_Front",
+        "Pages_Block_Left",
+        "Pages_Block_Right",
+        "Page_Left",
+        "Page_Right",
+        "Page_Turning"
+      ],
+      "maxCenterlineArcErrorPctGltf": 0.03084,
+      "bvhIntersectionsAcross101Samples": 0
+    }
+  ],
+  "triangleCount": 21956,
+  "vertexCount": 13012,
+  "jointCount": 233,
+  "glbSizeBytes": 3754828,
+  "glbSha256": "e1f8298778aa95a98d6ac9e055f01f31078f94ac250f5d42a378c4a750736260",
+  "validation": {
+    "visualReview": false,
+    "glbLoad": true,
+    "rightsReview": false,
+    "cleanCheckoutReproducible": true,
+    "isolatedBlendZeroMissingFiles": true,
+    "threeJsGltfLoaderVerified": true,
+    "completeSixClipLifecycleVerified": true,
+    "standaloneGlbBoundaryMaxDriftMm": 0.0,
+    "animationChannelIsolationVerified": true,
+    "pageTurnUnrelatedDriftMm": 0.0,
+    "configurablePageCountsVerified": [
+      4,
+      10,
+      24,
+      50,
+      100,
+      200
+    ],
+    "configurablePaperThicknessVerified": true,
+    "hundredPageEnduranceVerified": true,
+    "twoHundredPageStressVerified": true,
+    "interruptedTurnAndMidReverseVerified": true,
+    "normalSpeedDemoVideoRecorded": true,
+    "endToEndLifecycleVideoRecorded": true,
+    "independentFrontBackArtworkSwapVerified": true,
+    "multiInstanceMaterialIsolationVerified": true,
+    "boundedLruTextureDisposalVerified": true,
+    "physicalMobileDeviceTested": false,
+    "desktopWebGlAvgFrameMs": 0.376,
+    "desktopWebGlEnvironment": "Headless Google Chrome WebGL ANGLE on Apple M2 macOS (three@0.186.1)",
+    "manifoldMeshes": true,
+    "bvhOverlapsAcrossAll606Samples": 0,
+    "maxCenterlineArcErrorPctBlender": 0.03867,
+    "maxCenterlineArcErrorPctGltf": 0.03084,
+    "maxCrossSectionArcErrorPct": 0.24857,
+    "minTabletopClearanceMm": -0.0065,
+    "restingStateMaxMismatchMm": 0.0
+  },
+  "publication": {
+    "sketchfabUrl": null
+  }
+}

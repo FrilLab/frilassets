@@ -1,0 +1,137 @@
+{
+  "assetId": "stationery/fril-signature-seal",
+  "targetMaterials": [
+    "Sealing_Wax",
+    "Seal_Emblem"
+  ],
+  "defaultPreset": "burgundy",
+  "usageNotes": "Apply a preset uniformly to both Sealing_Wax and Seal_Emblem for a classic monochrome pressed seal, or assign a contrasting preset (such as champagne-gold) to Seal_Emblem alone for a gilded raised-relief finish. All presets reuse the single model.glb without geometry changes.",
+  "presets": [
+    {
+      "id": "burgundy",
+      "name": "Burgundy",
+      "isDefault": true,
+      "srgbHex": "#5A1919",
+      "Sealing_Wax": {
+        "baseColorFactor": [0.10224, 0.00972, 0.00972, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.42,
+        "normalScale": 0.11
+      },
+      "Seal_Emblem": {
+        "baseColorFactor": [0.10224, 0.00972, 0.00972, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.36,
+        "normalScale": 0.08
+      }
+    },
+    {
+      "id": "champagne-gold",
+      "name": "Champagne Gold",
+      "isDefault": false,
+      "srgbHex": "#B88E63",
+      "Sealing_Wax": {
+        "baseColorFactor": [0.47932, 0.2705, 0.12477, 1.0],
+        "metallicFactor": 0.32,
+        "roughnessFactor": 0.36,
+        "normalScale": 0.10
+      },
+      "Seal_Emblem": {
+        "baseColorFactor": [0.47932, 0.2705, 0.12477, 1.0],
+        "metallicFactor": 0.38,
+        "roughnessFactor": 0.32,
+        "normalScale": 0.07
+      }
+    },
+    {
+      "id": "ivory",
+      "name": "Ivory",
+      "isDefault": false,
+      "srgbHex": "#DFCEB9",
+      "Sealing_Wax": {
+        "baseColorFactor": [0.73791, 0.61721, 0.48515, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.44,
+        "normalScale": 0.11
+      },
+      "Seal_Emblem": {
+        "baseColorFactor": [0.73791, 0.61721, 0.48515, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.38,
+        "normalScale": 0.08
+      }
+    },
+    {
+      "id": "dusty-rose",
+      "name": "Dusty Rose",
+      "isDefault": false,
+      "srgbHex": "#CE9B8F",
+      "Sealing_Wax": {
+        "baseColorFactor": [0.61721, 0.32778, 0.27468, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.42,
+        "normalScale": 0.11
+      },
+      "Seal_Emblem": {
+        "baseColorFactor": [0.61721, 0.32778, 0.27468, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.37,
+        "normalScale": 0.08
+      }
+    },
+    {
+      "id": "sage-green",
+      "name": "Sage Green",
+      "isDefault": false,
+      "srgbHex": "#747751",
+      "Sealing_Wax": {
+        "baseColorFactor": [0.17465, 0.18447, 0.08228, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.43,
+        "normalScale": 0.11
+      },
+      "Seal_Emblem": {
+        "baseColorFactor": [0.17465, 0.18447, 0.08228, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.38,
+        "normalScale": 0.08
+      }
+    },
+    {
+      "id": "forest-green",
+      "name": "Forest Green",
+      "isDefault": false,
+      "srgbHex": "#1F392C",
+      "Sealing_Wax": {
+        "baseColorFactor": [0.0137, 0.04092, 0.02519, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.41,
+        "normalScale": 0.11
+      },
+      "Seal_Emblem": {
+        "baseColorFactor": [0.0137, 0.04092, 0.02519, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.36,
+        "normalScale": 0.08
+      }
+    },
+    {
+      "id": "midnight-black",
+      "name": "Midnight Black",
+      "isDefault": false,
+      "srgbHex": "#18181C",
+      "Sealing_Wax": {
+        "baseColorFactor": [0.00913, 0.00913, 0.01161, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.40,
+        "normalScale": 0.11
+      },
+      "Seal_Emblem": {
+        "baseColorFactor": [0.00913, 0.00913, 0.01161, 1.0],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.35,
+        "normalScale": 0.08
+      }
+    }
+  ]
+}

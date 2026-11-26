@@ -1,0 +1,115 @@
+{
+  "id": "wedding/wedding-envelope",
+  "name": "Wedding Envelope",
+  "version": "0.1.0",
+  "status": "draft",
+  "assetLicense": null,
+  "codeLicense": "MIT",
+  "aiAssisted": true,
+  "provenance": [
+    {
+      "type": "procedural-blender-python",
+      "tool": "Blender 5.2.2 LTS (bpy / bmesh)",
+      "script": "generate.py",
+      "thirdPartyContent": false,
+      "notes": "Generated 100% procedurally from parametric curves and manifold bmesh surfaces with Principled BSDF materials and corner color attributes. No third-party meshes, fonts, or image textures used."
+    }
+  ],
+  "files": {
+    "generator": "generate.py",
+    "source": "model.blend",
+    "glb": "model.glb",
+    "preview": "preview.webp",
+    "notes": "notes.md"
+  },
+  "parts": [
+    {
+      "name": "Envelope_Body",
+      "role": "static-base",
+      "triangles": 1424,
+      "vertices": 714,
+      "material": "Mat_Envelope",
+      "dimensionsMeters": {
+        "width": 0.22,
+        "height": 0.11,
+        "depth": 0.0056
+      },
+      "origin": {
+        "blenderZUp": [0.0, 0.0, 0.0],
+        "gltfYUp": [0.0, 0.0, 0.0],
+        "description": "Bottom-center of the envelope resting on ground plane (Y=0 in glTF, Z=0 in Blender)."
+      }
+    },
+    {
+      "name": "Envelope_Flap",
+      "role": "hinged-flap",
+      "triangles": 330,
+      "vertices": 167,
+      "material": "Mat_Envelope",
+      "dimensionsMeters": {
+        "width": 0.2184,
+        "length": 0.07,
+        "sheetThickness": 0.0007
+      },
+      "origin": {
+        "blenderZUp": [0.0, 0.00245, 0.11039],
+        "gltfYUp": [0.0, 0.11039, -0.00245],
+        "rotationAxis": "X",
+        "initialOpenAngleDegrees": -11.5,
+        "description": "Centered on the horizontal back-upper-edge fold line for X-axis open/close rotation."
+      }
+    },
+    {
+      "name": "Letter_Card",
+      "role": "sliding-card",
+      "triangles": 380,
+      "vertices": 192,
+      "material": "Mat_Letter_Card",
+      "dimensionsMeters": {
+        "width": 0.205,
+        "height": 0.095,
+        "thickness": 0.0008
+      },
+      "origin": {
+        "blenderZUp": [0.0, 0.0001, 0.0905],
+        "gltfYUp": [0.0, 0.0905, -0.0001],
+        "slideAxisGltf": "Y",
+        "slideAxisBlender": "Z",
+        "visibleAboveBackEdgeMeters": 0.028,
+        "visibleAboveFrontLipMeters": 0.0332,
+        "visibleHeightFraction": 0.295,
+        "description": "Geometric center of the letter card for vertical up/down slide animation."
+      }
+    }
+  ],
+  "dimensionsMeters": {
+    "assembled": {
+      "width": 0.22,
+      "height": 0.179,
+      "depth": 0.0178
+    },
+    "envelopeBody": {
+      "width": 0.22,
+      "height": 0.11,
+      "depth": 0.0056
+    },
+    "letterCard": {
+      "width": 0.205,
+      "height": 0.095,
+      "thickness": 0.0008
+    }
+  },
+  "triangleCount": 2134,
+  "glbSizeBytes": 58480,
+  "validation": {
+    "visualReview": true,
+    "glbLoad": true,
+    "rightsReview": false,
+    "manifoldCheck": true,
+    "zeroSelfIntersections": true,
+    "zeroPartCollisions": true
+  },
+  "publication": {
+    "sketchfabUrl": null
+  }
+}

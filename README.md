@@ -27,3 +27,5 @@ The existing MIT LICENSE covers repository software and documentation. Only asse
 ## Sourcing policy
 
 Search first, create last. Reuse suitable existing CC0 assets before spending resources on generation. See [asset sourcing](docs/asset-sourcing.md) for the required discovery and provenance gate.
+
+See [asset file policy](docs/asset-file-policy.md) for minimal tracked packages, local validation outputs, and consumer distribution boundaries.

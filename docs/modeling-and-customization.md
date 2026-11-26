@@ -57,3 +57,5 @@ When applicable, test the exported GLB with a standard GLTFLoader:
 6. Compare rendered output, count triangles and record actual GLB size. Document limits and any unavailable checks.
 
 Record stable node names, material slot mappings, pivots, axes, UV orientation, default values, supported customization properties, and actual validation results in notes.md and manifest.json where appropriate. These are documentation conventions; no new mandatory manifest schema or loader is introduced. Do not claim completion without actual checks.
+
+Keep validation renders local under `.work/` by default, with one tracked catalog preview and recorded validation results. Preserve all inputs required to reproduce and edit the model. See [asset file policy](asset-file-policy.md).

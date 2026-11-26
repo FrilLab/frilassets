@@ -22,3 +22,9 @@
 
 - Before generating any asset, follow `docs/asset-sourcing.md`: search existing local packages, then suitable external CC0 sources. Record candidates, license evidence, suitability and the reuse/adapt/create decision. Do not commission generation merely to duplicate a suitable existing asset.
 - If search access is unavailable, report the blocker; do not claim that no suitable asset exists. Never download or republish uncleared assets or describe third-party work as original FrilAssets work.
+
+## Repository hygiene
+
+- Follow `docs/asset-file-policy.md`. Track canonical source, required regeneration/editing dependencies, runtime deliverables, metadata, license evidence, and one catalog preview by default.
+- Put intermediate renders, diagnostic previews and regenerable temporary files in the ignored root `.work/` directory. Never delete irreplaceable sources or required dependencies to reduce file count.
+- Verify dependency closure before removing tracked files; report unperformed clean-checkout tests. Keep runtime distribution separate from authoring and validation files.

@@ -49,3 +49,7 @@ For models, use meters and document axes, origin, dimensions and movable parts. 
 ## Model packaging
 
 One assembled GLB may contain multiple meshes, material slots, nodes and animation clips. Keep parts in that assembly by default. Separate files are optional for independently consumed assets, not required for independent transforms or colors. Keep the canonical generator/source authoritative and document derived exports and versioned dependencies. See [modeling and customization](modeling-and-customization.md).
+
+## Tracked files and local workspace
+
+The examples above describe canonical package files, not a requirement to commit every generated output. Keep one catalog preview by default. Put diagnostic previews and temporary outputs under the ignored root `.work/<asset-id>/` directory. Keep non-reproducible sources and required external dependencies. See [asset file policy](asset-file-policy.md) for the detailed inclusion rules and consumer file boundaries.

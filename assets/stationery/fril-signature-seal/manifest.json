@@ -1,0 +1,192 @@
+{
+  "id": "stationery/fril-signature-seal",
+  "name": "Fril Signature Seal",
+  "version": "0.1.0",
+  "status": "draft",
+  "assetLicense": null,
+  "licenseNotes": "Draft — unreleased pending visual, technical, and rights review. The Fril Signature Emblem (calligraphic F monogram, crossed laurel branches, and four-point star) represents FrilLab brand identity and must not be designated CC0 without explicit brand owner approval. Generator script retains the repository MIT license.",
+  "codeLicense": "MIT",
+  "aiAssisted": true,
+  "sourcing": {
+    "decision": "create",
+    "checkedDate": "2026-11-26",
+    "localSearch": "Checked existing FrilAssets packages (assets/, materials/wax/, textures/) and sibling FrilStudio/FrilCraft assets read-only. materials/wax/champagne-wax is currently an unimplemented backlog item in docs/collections/wedding-stationery.md and no existing 3D wax seal package exists.",
+    "externalEvaluation": "Evaluated standard CC0 libraries (Poly Haven, ambientCG) per docs/asset-sourcing.md. Because the central Fril Signature Emblem is bespoke brand artwork and the 6-scallop pressed wax border + 256x256 OpenGL (+Y) micro-wax normal map are compact, deterministic procedural surfaces tailored to the 5,000-triangle / <500 KB web budget, authoring clean procedural geometry + packed micro-normal map avoids unnecessary third-party texture weight while guaranteeing exact brand fidelity."
+  },
+  "provenance": [
+    {
+      "role": "brand-design-reference",
+      "localArchivePath": ".work/fril-signature-seal/references/reference.png",
+      "sha256": "102d6b699998a76b0b5a63dbc55015c168fe8bad3a38c7fc8f33475483df8581",
+      "license": "Proprietary / FrilLab brand reference (kept local in ignored .work/, not redistributed)",
+      "notes": "User-supplied Fril Signature Seal design board used to extract the flat 2D emblem, calibrate the 6-scallop melted-wax silhouette, and sample brand preset colors."
+    },
+    {
+      "role": "canonical-emblem-vector",
+      "path": "source/emblem.svg",
+      "sha256": "5e818734c8f0150c6096b64b3865cea8c6163e06a39dddf739227f2b55471340",
+      "tool": "Sub-pixel Marching Squares (4x Catmull-Rom supersampling) + Philip J. Schneider least-squares cubic Bezier fitting",
+      "notes": "Canonical vector emblem containing 3 closed subpaths (261 cubic Bezier segments: calligraphic F, crossed laurel branches, four-point star)."
+    },
+    {
+      "role": "procedural-3d-and-material-generation",
+      "path": "generate.py",
+      "tool": "Blender 5.2.2 LTS (bpy / bmesh / mathutils) + NumPy + ImageMagick 7 (SVG rasterization + cwebp)",
+      "thirdPartyContent": false,
+      "notes": "Deterministically rasterizes source/emblem.svg in a temporary directory, builds the 3-tier SDF cushioned relief and 6-scallop pressed wax body, synthesizes and packs a 256x256 lossless linear OpenGL (+Y) tangent-space micro-wax normal map (seed 42026, 0.032 m UV repeat) in memory, exports model.glb, renders preview.webp, and saves model.blend."
+    }
+  ],
+  "files": {
+    "generator": "generate.py",
+    "source": "model.blend",
+    "glb": "model.glb",
+    "preview": "preview.webp",
+    "materialPresets": "material-presets.json",
+    "emblemVector": "source/emblem.svg"
+  },
+  "distribution": {
+    "runtimeFiles": [
+      {
+        "path": "model.glb",
+        "required": true,
+        "sizeBytes": 252156,
+        "sha256": "325346f8b244f917eabda355ec843fc1f8cd0a931e5bbe9aeca778523d3ccc00",
+        "notes": "Self-contained glTF 2.0 binary with embedded 256x256 linear OpenGL (+Y) micro-wax normal map; zero external texture dependencies at runtime."
+      },
+      {
+        "path": "material-presets.json",
+        "required": false,
+        "sizeBytes": 3894,
+        "notes": "Optional lightweight PBR color/finish presets (Burgundy, Champagne Gold, Ivory, Dusty Rose, Sage Green, Forest Green, Midnight Black) applied at runtime without duplicating GLB geometry."
+      }
+    ],
+    "catalogFiles": [
+      {
+        "path": "preview.webp",
+        "sizeBytes": 57012
+      },
+      {
+        "path": "manifest.json"
+      }
+    ],
+    "authoringDependencies": [
+      {
+        "path": "generate.py",
+        "sizeBytes": 49541,
+        "requires": ["source/emblem.svg", "material-presets.json"]
+      },
+      {
+        "path": "source/emblem.svg",
+        "sizeBytes": 12290
+      },
+      {
+        "path": "model.blend",
+        "sizeBytes": 349446,
+        "notes": "Editable Blender 5.2 source with packed in-memory wax-micro-normal map and isolated Studio_Preview collection; zero external file dependencies."
+      }
+    ],
+    "localIgnoredWorkspace": ".work/fril-signature-seal/ (holds diagnostic multi-angle renders, intermediate masks/maps, and reference board)"
+  },
+  "coordinateSystem": {
+    "units": "meters",
+    "exportedGltf": {
+      "x": "+X horizontal (right)",
+      "y": "+Y vertical (up toward four-point star)",
+      "z": "+Z visible front face and embossed relief direction",
+      "attachmentPlane": "Local XY plane at Z = 0.000000 m",
+      "origin": [0.0, 0.0, 0.0],
+      "originDescription": "Exact center of the flat rear attachment surface for zero-offset placement on +Z-facing surfaces."
+    },
+    "blenderToGltfConversion": {
+      "blenderAxes": "+X right, +Z vertical up, rear attachment surface on Y = 0, front relief along -Y",
+      "exporterMapping": "(X_glTF, Y_glTF, Z_glTF) = (+X_Blender, +Z_Blender, -Y_Blender) via standard glTF +Y-up export, preserving identity TRS on all exported nodes."
+    }
+  },
+  "parts": [
+    {
+      "name": "Wax_Seal",
+      "type": "Object3D",
+      "parent": null,
+      "originGltf": [0.0, 0.0, 0.0],
+      "children": ["Wax_Body", "Wax_Emblem"],
+      "description": "Root transform node centered on the rear attachment surface."
+    },
+    {
+      "name": "Wax_Body",
+      "type": "Mesh",
+      "parent": "Wax_Seal",
+      "material": "Sealing_Wax",
+      "triangles": 2128,
+      "vertices": 1066,
+      "gltfVerticesWithSeams": 1142,
+      "boundsMetersGltf": {
+        "min": [-0.01386, -0.014281, 0.0],
+        "max": [0.013486, 0.015358, 0.002525]
+      }
+    },
+    {
+      "name": "Wax_Emblem",
+      "type": "Mesh",
+      "parent": "Wax_Seal",
+      "material": "Seal_Emblem",
+      "triangles": 2194,
+      "vertices": 1377,
+      "boundsMetersGltf": {
+        "min": [-0.009318, -0.009446, 0.001297],
+        "max": [0.009314, 0.00942, 0.00171]
+      },
+      "notes": "3-tier sub-pixel SDF cushioned relief whose outer meniscus skirt embeds -0.022 mm into Wax_Body so the emblem never floats at grazing angles."
+    }
+  ],
+  "materials": {
+    "customizationContract": "Zero vertex colors and zero base-color textures; recolor independently via baseColorFactor, metallicFactor, and roughnessFactor on Sealing_Wax and Seal_Emblem. Planar XY UVs span 0.032 m x 0.032 m centered at (0.5, 0.5).",
+    "slots": [
+      {
+        "name": "Sealing_Wax",
+        "targetMesh": "Wax_Body",
+        "defaultSrgbHex": "#5A1919",
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.42,
+        "normalScale": 0.11
+      },
+      {
+        "name": "Seal_Emblem",
+        "targetMesh": "Wax_Emblem",
+        "defaultSrgbHex": "#5A1919",
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.36,
+        "normalScale": 0.08
+      }
+    ]
+  },
+  "dimensionsMeters": {
+    "nominalDiameter": 0.028,
+    "measuredWidthX": 0.027346,
+    "measuredHeightY": 0.029639,
+    "measuredMeanDiameter": 0.028492,
+    "maxThicknessZ": 0.002525,
+    "centralFieldThicknessZ": 0.00138,
+    "emblemReliefHeightAboveField": 0.000305,
+    "emblemSpanDiameter": 0.01884
+  },
+  "triangleCount": 4322,
+  "glbSizeBytes": 252156,
+  "glbSha256": "325346f8b244f917eabda355ec843fc1f8cd0a931e5bbe9aeca778523d3ccc00",
+  "validation": {
+    "visualReview": true,
+    "glbLoad": true,
+    "rightsReview": false,
+    "cleanCheckoutReproducible": true,
+    "isolatedBlendZeroMissingFiles": true,
+    "threeJsGltfLoaderVerified": true,
+    "runtimeMaterialSwapVerified": true,
+    "waxBodyManifold": true,
+    "zeroDegenerateFaces": true,
+    "zeroSelfIntersections": true,
+    "rearAttachmentFlatnessMaxErrorMeters": 0.0,
+    "emblem3dVsSourceMaskIoU": 0.89
+  },
+  "publication": {
+    "sketchfabUrl": null
+  }
+}

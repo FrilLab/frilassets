@@ -114,6 +114,9 @@ const _qY = new THREE.Quaternion();
 const _qBaseSheet = new THREE.Quaternion(0, 0, -Math.SQRT1_2, Math.SQRT1_2); // Qz(-90 deg)
 const _qBaseSpine = new THREE.Quaternion(Math.SQRT1_2, 0, 0, Math.SQRT1_2);  // Qx(+90 deg)
 const _yAxis = new THREE.Vector3(0, 1, 0);
+const _tmpMat = new THREE.Matrix4();
+const _tmpVec = new THREE.Vector3();
+const HALF_PAGE_H = 0.5 * 0.29700 + 0.0015;
 
 export class EditorialMagazineController {
   /**
@@ -139,6 +142,7 @@ export class EditorialMagazineController {
     this._pageArtworkProvider = null;
     this._lruTextures = new Map(); // key -> { tex, owned }
     this._coverTextures = new Map();
+    this._rigBounds = {};
 
     const groupNames = [
       "Binding",
@@ -771,7 +775,19 @@ export class EditorialMagazineController {
   // -------------------------------------------------------------------------
   // Exact 233-Joint Skeletal Elastica & Morph-Stack Pose Application
   // -------------------------------------------------------------------------
-  _setChainBones(chainPrefix, x0, z0, thetaArr) {
+  _recordRigBounds(groupName, minX, maxX, minZ, maxZ, pad) {
+    let b = this._rigBounds[groupName];
+    if (!b) {
+      b = { minX: 0, maxX: 0, minZ: 0, maxZ: 0 };
+      this._rigBounds[groupName] = b;
+    }
+    b.minX = minX - pad;
+    b.maxX = maxX + pad;
+    b.minZ = minZ - pad;
+    b.maxZ = maxZ + pad;
+  }
+
+  _setChainBones(chainPrefix, x0, z0, thetaArr, halfThick = 0.0005) {
     const rootBone = this.bones[`${chainPrefix}_00`];
     if (!rootBone) return;
     rootBone.position.set(x0, 0, z0);
@@ -780,12 +796,28 @@ export class EditorialMagazineController {
     _qY.setFromAxisAngle(_yAxis, -thetaArr[0]);
     rootBone.quaternion.copy(_qY).multiply(_qBaseSheet);
 
-    for (let k = 1; k < N_SHEET_BONES; k++) {
-      const b = this.bones[`${chainPrefix}_${String(k).padStart(2, "0")}`];
-      const dTheta = thetaArr[k] - thetaArr[k - 1];
-      const half = 0.5 * dTheta;
-      b.quaternion.set(Math.sin(half), 0, 0, Math.cos(half));
+    let cx = x0;
+    let cz = z0;
+    let minX = x0;
+    let maxX = x0;
+    let minZ = z0;
+    let maxZ = z0;
+
+    for (let k = 0; k < N_SHEET_BONES; k++) {
+      if (k > 0) {
+        const b = this.bones[`${chainPrefix}_${String(k).padStart(2, "0")}`];
+        const dTheta = thetaArr[k] - thetaArr[k - 1];
+        const half = 0.5 * dTheta;
+        b.quaternion.set(Math.sin(half), 0, 0, Math.cos(half));
+      }
+      cx += BONE_DS[k] * Math.cos(thetaArr[k]);
+      cz += BONE_DS[k] * Math.sin(thetaArr[k]);
+      if (cx < minX) minX = cx;
+      if (cx > maxX) maxX = cx;
+      if (cz < minZ) minZ = cz;
+      if (cz > maxZ) maxZ = cz;
     }
+    this._recordRigBounds(chainPrefix, minX, maxX, minZ, maxZ, halfThick + 0.0018);
   }
 
   _setSpineBones(mode, qProgress, spineSpan) {
@@ -845,11 +877,54 @@ export class EditorialMagazineController {
 
     let xEnd = xStart;
     let zEnd = zStart;
+    let minX = xStart;
+    let maxX = xStart;
+    let minZ = zStart;
+    let maxZ = zStart;
     for (let i = 0; i < N_SPINE_BONES; i++) {
       xEnd += du * Math.cos(thArr[i]);
       zEnd += du * Math.sin(thArr[i]);
+      if (xEnd < minX) minX = xEnd;
+      if (xEnd > maxX) maxX = xEnd;
+      if (zEnd < minZ) minZ = zEnd;
+      if (zEnd > maxZ) maxZ = zEnd;
     }
+    this._recordRigBounds("Binding", minX, maxX, minZ, maxZ, 0.006);
     return { xBack: xStart, zBack: zStart, xFront: xEnd, zFront: zEnd };
+  }
+
+  _finalizePoseBounds() {
+    this.root.updateMatrixWorld(true);
+    const rigOrigin = this.bones["Rig_Origin"];
+    if (!rigOrigin) return;
+    const rigWorld = rigOrigin.matrixWorld;
+
+    for (const groupName of Object.keys(this.primitivesByGroup)) {
+      const b = this._rigBounds[groupName];
+      if (!b) continue;
+      const prims = this.primitivesByGroup[groupName];
+      for (let i = 0; i < prims.length; i++) {
+        const prim = prims[i];
+        if (!prim.visible) continue;
+        if (!prim.boundingBox) prim.boundingBox = new THREE.Box3();
+        if (!prim.boundingSphere) prim.boundingSphere = new THREE.Sphere();
+
+        _tmpMat.copy(prim.matrixWorld).invert().multiply(rigWorld);
+        prim.boundingBox.makeEmpty();
+        for (let ix = 0; ix < 2; ix++) {
+          const rx = ix === 0 ? b.minX : b.maxX;
+          for (let iy = 0; iy < 2; iy++) {
+            const ry = iy === 0 ? -HALF_PAGE_H : HALF_PAGE_H;
+            for (let iz = 0; iz < 2; iz++) {
+              const rz = iz === 0 ? b.minZ : b.maxZ;
+              _tmpVec.set(rx, ry, rz).applyMatrix4(_tmpMat);
+              prim.boundingBox.expandByPoint(_tmpVec);
+            }
+          }
+        }
+        prim.boundingBox.getBoundingSphere(prim.boundingSphere);
+      }
+    }
   }
 
   _applyPose() {
@@ -881,7 +956,7 @@ export class EditorialMagazineController {
       this._setGroupVisible("Pages_Block_Left", false);
       this._setGroupVisible("Page_Turning", false);
 
-      this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, flatRight);
+      this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, flatRight, 0.5 * tCov);
 
       // Right stack (all N leaves on right side — matches OPEN_SPREAD k=0 identically at qSp=1.0!)
       const hasBlockR = acc.rightInactiveLeaves > 0;
@@ -906,7 +981,7 @@ export class EditorialMagazineController {
         const zBrTarget = (1.0 - qSp) * zBrClosed + qSp * zBrOpen;
         const zBrRoot = zBrTarget + 0.00004 * qSp;
         const thBr = solveBoneArchTheta(zBrRoot, zBrTarget, "right", archCur, flatU);
-        this._setChainBones("Pages_Block_Right", xStack, zBrRoot, thBr);
+        this._setChainBones("Pages_Block_Right", xStack, zBrRoot, thBr, 0.5 * hBlockR);
         zRightTopClosed = zBrClosed + 0.5 * hBlockR;
         zRightTopOpen = zBrOpen + (0.5 * hBlockR) / cosOpenR;
       }
@@ -917,15 +992,15 @@ export class EditorialMagazineController {
       const zPrTarget = (1.0 - qSp) * zPrClosed + qSp * zPrOpen;
       const zPrRoot = zPrTarget + 0.00004 * qSp;
       const thPr = solveBoneArchTheta(zPrRoot, zPrTarget, "right", archCur, flatU);
-      this._setChainBones("Page_Right", xStack, zPrRoot, thPr);
+      this._setChainBones("Page_Right", xStack, zPrRoot, thPr, 0.5 * tLeaf);
 
       // Cover_Front lifts smoothly from top of right stack (pOpen=0) across spine onto left tabletop (pOpen=1)!
       const zCfClosed = zPrClosed + 0.5 * tLeaf + gap + 0.5 * tCov;
       if (pOpen <= 0.0) {
         const thCf0 = solveBoneArchTheta(spEnds.zFront, zCfClosed, "right", 0.85, 0.68);
-        this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, thCf0);
+        this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, thCf0, 0.5 * tCov);
       } else if (pOpen >= 1.0) {
-        this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, flatLeft);
+        this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, flatLeft, 0.5 * tCov);
       } else {
         const thCf0 = solveBoneArchTheta(spEnds.zFront, zCfClosed, "right", 0.85, 0.68);
         const lift = pOpen < 0.56 ? Math.pow(Math.sin((Math.PI * pOpen) / 0.56), 1.25) : 0.0;
@@ -948,9 +1023,9 @@ export class EditorialMagazineController {
             thCf[k] -= 0.012 * smoothstep(0.015, 0.92, BONE_S_MIDS[k] / PAGE_W);
           }
         }
-        this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, thCf);
+        this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, thCf, 0.5 * tCov);
       }
-      this.root.updateMatrixWorld(true);
+      this._finalizePoseBounds();
       return;
     }
 
@@ -971,7 +1046,7 @@ export class EditorialMagazineController {
       this._setGroupVisible("Pages_Block_Right", false);
       this._setGroupVisible("Page_Turning", false);
 
-      this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, flatLeft);
+      this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, flatLeft, 0.5 * tCov);
 
       // Left stack (all N leaves on left side — matches OPEN_SPREAD k=N identically at qSp=0.0!)
       const hasBlockL = acc.leftInactiveLeaves > 0;
@@ -996,7 +1071,7 @@ export class EditorialMagazineController {
         const zBlTarget = (1.0 - qSp) * zBlOpen + qSp * zBlClosed;
         const zBlRoot = zBlTarget + 0.00004 * (1.0 - qSp);
         const thBl = solveBoneArchTheta(zBlRoot, zBlTarget, "left", archCur, flatU);
-        this._setChainBones("Pages_Block_Left", xStackL, zBlRoot, thBl);
+        this._setChainBones("Pages_Block_Left", xStackL, zBlRoot, thBl, 0.5 * hBlockL);
         zLeftTopOpen = zBlOpen + (0.5 * hBlockL) / cosOpenL;
         zLeftTopClosed = zBlClosed + 0.5 * hBlockL;
       }
@@ -1007,15 +1082,15 @@ export class EditorialMagazineController {
       const zPlTarget = (1.0 - qSp) * zPlOpen + qSp * zPlClosed;
       const zPlRoot = zPlTarget + 0.00004 * (1.0 - qSp);
       const thPl = solveBoneArchTheta(zPlRoot, zPlTarget, "left", archCur, flatU);
-      this._setChainBones("Page_Left", xStackL, zPlRoot, thPl);
+      this._setChainBones("Page_Left", xStackL, zPlRoot, thPl, 0.5 * tLeaf);
 
       // Cover_Back folds from right tabletop (theta=0 at pClose=0) onto top of left stack (theta~pi at pClose=1)!
       const zCbClosed = zPlClosed + 0.5 * tLeaf + gap + 0.5 * tCov;
       if (pClose <= 0.0) {
-        this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, flatRight);
+        this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, flatRight, 0.5 * tCov);
       } else if (pClose >= 1.0) {
         const thCb1 = solveBoneArchTheta(spEnds.zBack, zCbClosed, "left", 0.85, 0.68);
-        this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, thCb1);
+        this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, thCb1, 0.5 * tCov);
       } else {
         const thCb1 = solveBoneArchTheta(spEnds.zBack, zCbClosed, "left", 0.85, 0.68);
         const lift = pClose < 0.56 ? Math.pow(Math.sin((Math.PI * pClose) / 0.56), 1.25) : 0.0;
@@ -1038,9 +1113,9 @@ export class EditorialMagazineController {
             thCb[k] += 0.012 * smoothstep(0.015, 0.92, BONE_S_MIDS[k] / PAGE_W);
           }
         }
-        this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, thCb);
+        this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, thCb, 0.5 * tCov);
       }
-      this.root.updateMatrixWorld(true);
+      this._finalizePoseBounds();
       return;
     }
 
@@ -1048,8 +1123,8 @@ export class EditorialMagazineController {
     const spEnds = this._setSpineBones("FRONT", 1.0, span);
     this._setGroupVisible("Cover_Front", true);
     this._setGroupVisible("Cover_Back", true);
-    this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, flatRight);
-    this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, flatLeft);
+    this._setChainBones("Cover_Back", spEnds.xBack, spEnds.zBack, flatRight, 0.5 * tCov);
+    this._setChainBones("Cover_Front", spEnds.xFront, spEnds.zFront, flatLeft, 0.5 * tCov);
 
     const uTurnForArch =
       this.state === "TURNING"
@@ -1074,7 +1149,7 @@ export class EditorialMagazineController {
       const dzBl = (0.5 * hBl) / cosL + gap;
       const zBl = zLeftSurfaceTop + dzBl;
       const thBl = solveBoneArchTheta(zBl + 0.00004, zBl, "left", archL);
-      this._setChainBones("Pages_Block_Left", xL, zBl + 0.00004, thBl);
+      this._setChainBones("Pages_Block_Left", xL, zBl + 0.00004, thBl, 0.5 * hBl);
       zLeftSurfaceTop = zBl + (0.5 * hBl) / cosL;
     }
 
@@ -1082,7 +1157,7 @@ export class EditorialMagazineController {
       const dzPl = (0.5 * tLeaf) / cosL + gap;
       const zPl = zLeftSurfaceTop + dzPl;
       const thPl = solveBoneArchTheta(zPl + 0.00004, zPl, "left", archL);
-      this._setChainBones("Page_Left", xL, zPl + 0.00004, thPl);
+      this._setChainBones("Page_Left", xL, zPl + 0.00004, thPl, 0.5 * tLeaf);
       zLeftSurfaceTop = zPl + (0.5 * tLeaf) / cosL;
     }
 
@@ -1104,7 +1179,7 @@ export class EditorialMagazineController {
       const dzBr = (0.5 * hBr) / cosR + gap;
       const zBr = zRightSurfaceTop + dzBr;
       const thBr = solveBoneArchTheta(zBr + 0.00004, zBr, "right", archR);
-      this._setChainBones("Pages_Block_Right", xR, zBr + 0.00004, thBr);
+      this._setChainBones("Pages_Block_Right", xR, zBr + 0.00004, thBr, 0.5 * hBr);
       zRightSurfaceTop = zBr + (0.5 * hBr) / cosR;
     }
 
@@ -1112,14 +1187,14 @@ export class EditorialMagazineController {
       const dzPr = (0.5 * tLeaf) / cosR + gap;
       const zPr = zRightSurfaceTop + dzPr;
       const thPr = solveBoneArchTheta(zPr + 0.00004, zPr, "right", archR);
-      this._setChainBones("Page_Right", xR, zPr + 0.00004, thPr);
+      this._setChainBones("Page_Right", xR, zPr + 0.00004, thPr, 0.5 * tLeaf);
       zRightSurfaceTop = zPr + (0.5 * tLeaf) / cosR;
     }
 
     // Active Turning Sheet (`Page_Turning`)
     if (this.state !== "TURNING") {
       this._setGroupVisible("Page_Turning", false);
-      this.root.updateMatrixWorld(true);
+      this._finalizePoseBounds();
       return;
     }
 
@@ -1133,9 +1208,9 @@ export class EditorialMagazineController {
     const th1Rest = solveBoneArchTheta(zPtLeft + 0.00004, zPtLeft, "left", archL);
 
     if (uTurn <= 0.0) {
-      this._setChainBones("Page_Turning", xR, zPtRight + 0.00004, th0Rest);
+      this._setChainBones("Page_Turning", xR, zPtRight + 0.00004, th0Rest, 0.5 * tLeaf);
     } else if (uTurn >= 1.0) {
-      this._setChainBones("Page_Turning", xL, zPtLeft + 0.00004, th1Rest);
+      this._setChainBones("Page_Turning", xL, zPtLeft + 0.00004, th1Rest, 0.5 * tLeaf);
     } else {
       // Phase-gated root X and Z so the turning sheet clears the taller stack past vertical before descending
       // onto the shorter stack (and climbs early before landing onto a taller destination stack)!
@@ -1166,10 +1241,10 @@ export class EditorialMagazineController {
           ((42.0 * Math.PI) / 180.0) * landEnv * Math.pow(uFlex, 1.20);
         thPt[k] = thBase + thWave;
       }
-      this._setChainBones("Page_Turning", xPt, zPt, thPt);
+      this._setChainBones("Page_Turning", xPt, zPt, thPt, 0.5 * tLeaf);
     }
 
-    this.root.updateMatrixWorld(true);
+    this._finalizePoseBounds();
   }
 
   dispose() {

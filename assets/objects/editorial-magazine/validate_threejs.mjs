@@ -1223,6 +1223,121 @@ window.__runFinalAcceptance = async function () {
   // Restore numbered canvas on Page 7
   ctrl.setPageArtwork(7, generated100Artworks.get(7));
 
+  // Regression Test E: SkinnedMesh boundingSphere & boundingBox refresh across pose transitions
+  // (Prevents false frustum culling and missed Raycaster hits after rendering/raycasting CLOSED_FRONT!)
+  const raycaster = new THREE.Raycaster();
+  const hitGroupNames = (origin, dir) => {
+    raycaster.set(origin, dir.clone().normalize());
+    const hits = raycaster.intersectObject(root, true);
+    const names = new Set();
+    for (const h of hits) {
+      if (h.object && h.object.visible && h.object.name) names.add(h.object.name.replace(/_\\d+$/, ""));
+    }
+    return names;
+  };
+  const verifyAnalyticalBoundsCoverExactVertices = () => {
+    const exactBox = new THREE.Box3();
+    const vTmp = new THREE.Vector3();
+    for (const prims of Object.values(ctrl.primitivesByGroup)) {
+      for (const prim of prims) {
+        if (!prim.visible || !prim.isSkinnedMesh) continue;
+        if (!prim.boundingBox || !prim.boundingSphere) return false;
+        exactBox.makeEmpty();
+        const posAttr = prim.geometry.getAttribute("position");
+        for (let vi = 0; vi < posAttr.count; vi++) {
+          prim.getVertexPosition(vi, vTmp);
+          exactBox.expandByPoint(vTmp);
+        }
+        if (
+          prim.boundingBox.min.x > exactBox.min.x + 1e-4 ||
+          prim.boundingBox.min.y > exactBox.min.y + 1e-4 ||
+          prim.boundingBox.min.z > exactBox.min.z + 1e-4 ||
+          prim.boundingBox.max.x < exactBox.max.x - 1e-4 ||
+          prim.boundingBox.max.y < exactBox.max.y - 1e-4 ||
+          prim.boundingBox.max.z < exactBox.max.z - 1e-4
+        ) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  // 1) Start in CLOSED_FRONT, render & raycast on +X so Three.js exercises closed-state bounds
+  while (ctrl.previous()) { /* rewind to k = 0 */ }
+  ctrl.closeFrontCover(1.0);
+  camera.position.set(0.24, 0.36, 0.38);
+  camera.lookAt(0.10, 0.005, 0.0);
+  renderer.render(scene, camera);
+  const closedFrontHits = hitGroupNames(new THREE.Vector3(0.105, 0.50, 0.0), new THREE.Vector3(0, -1, 0));
+  const closedSphereCenterX = ctrl.primitivesByGroup.Cover_Front[0].boundingSphere.center.x;
+  const closedExactCovered = verifyAnalyticalBoundsCoverExactVertices();
+
+  // 2) Open magazine and turn 1 leaf so Cover_Front and Page_Left move to -X
+  ctrl.openFrontCover(1.0);
+  ctrl.next();
+  const openFrontSphereCenterX = ctrl.primitivesByGroup.Cover_Front[0].boundingSphere.center.x;
+  const openPageLeftSphereCenterX = ctrl.primitivesByGroup.Page_Left[0].boundingSphere.center.x;
+  const openExactCovered = verifyAnalyticalBoundsCoverExactVertices();
+
+  // Tight left-only camera whose frustum sees ONLY x < -0.02 (completely excluding +X!)
+  const leftOnlyCam = new THREE.PerspectiveCamera(24, width / height, 0.01, 5.0);
+  leftOnlyCam.position.set(-0.125, 0.22, 0.001);
+  leftOnlyCam.lookAt(-0.125, 0.0, 0.0);
+  leftOnlyCam.updateProjectionMatrix();
+  leftOnlyCam.updateMatrixWorld(true);
+  const leftProjScreen = new THREE.Matrix4().multiplyMatrices(
+    leftOnlyCam.projectionMatrix,
+    leftOnlyCam.matrixWorldInverse
+  );
+  const leftFrustum = new THREE.Frustum().setFromProjectionMatrix(leftProjScreen);
+  const staleRightExcluded = !leftFrustum.intersectsSphere(
+    new THREE.Sphere(new THREE.Vector3(0.105, 0.005, 0.0), 0.08)
+  );
+  const leftCoverInFrustum = leftFrustum.intersectsObject(ctrl.primitivesByGroup.Cover_Front[0]);
+  const leftPageInFrustum = leftFrustum.intersectsObject(ctrl.primitivesByGroup.Page_Left[1]);
+  renderer.render(scene, leftOnlyCam);
+  const leftRenderDrawCalls = renderer.info.render.calls;
+  const openLeftHits = hitGroupNames(new THREE.Vector3(-0.105, 0.50, 0.0), new THREE.Vector3(0, -1, 0));
+
+  // 3) Mid-turn (u = 0.50): Page_Turning arcs near vertical above spine; horizontal ray hits Page_Turning
+  ctrl.beginTurnForward();
+  ctrl.setTurnProgress(0.50);
+  const midTurnExactCovered = verifyAnalyticalBoundsCoverExactVertices();
+  const midTurnHits = hitGroupNames(new THREE.Vector3(-0.25, 0.10, 0.0), new THREE.Vector3(1, 0, 0));
+  ctrl.cancelTurn();
+
+  // 4) Advance to CLOSED_BACK on -X and verify Cover_Back bounds & raycast hit on -X
+  while (ctrl.next()) { /* advance to final spread */ }
+  ctrl.closeBackCover(1.0);
+  const closedBackSphereCenterX = ctrl.primitivesByGroup.Cover_Back[0].boundingSphere.center.x;
+  const closedBackExactCovered = verifyAnalyticalBoundsCoverExactVertices();
+  const closedBackHits = hitGroupNames(new THREE.Vector3(-0.105, 0.50, 0.0), new THREE.Vector3(0, -1, 0));
+
+  // Restore open spread at k = 3 before Section 7 benchmark
+  ctrl.openBackCover(1.0);
+  while (ctrl.leftLeaves > 3) ctrl.previous();
+
+  const skinnedBoundsUpdatedVerified = Boolean(
+    closedFrontHits.has("Cover_Front") &&
+    closedSphereCenterX > 0.05 &&
+    openFrontSphereCenterX < -0.05 &&
+    openPageLeftSphereCenterX < -0.05 &&
+    closedBackSphereCenterX < -0.05 &&
+    closedExactCovered &&
+    openExactCovered &&
+    midTurnExactCovered &&
+    closedBackExactCovered &&
+    staleRightExcluded &&
+    leftCoverInFrustum &&
+    leftPageInFrustum &&
+    leftRenderDrawCalls > 0 &&
+    openLeftHits.has("Cover_Front") &&
+    openLeftHits.has("Page_Left") &&
+    midTurnHits.has("Page_Turning") &&
+    closedBackHits.has("Cover_Back")
+  );
+
   // =========================================================================
   // 7. Runtime Skinning & Frame-Time Performance Benchmark (Section 17)
   // =========================================================================
@@ -1320,6 +1435,7 @@ window.__runFinalAcceptance = async function () {
     interruptionReport,
     instanceIsolationVerified,
     externalTextureReuploadVerified,
+    skinnedBoundsUpdatedVerified,
     performanceReport,
     shots: enduranceShots,
   };
@@ -1690,6 +1806,7 @@ try {
     !data.matrixClearanceAllPositive ||
     !data.instanceIsolationVerified ||
     !data.externalTextureReuploadVerified ||
+    !data.skinnedBoundsUpdatedVerified ||
     errors.length
   ) {
     process.exitCode = 1;

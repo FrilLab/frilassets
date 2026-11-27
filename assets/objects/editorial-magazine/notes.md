@@ -109,9 +109,9 @@ Because glTF 2.0 and Three.js evaluate morph targets in **bind space** (prior to
 ### Consumer Distribution Payloads (`docs/asset-file-policy.md`)
 1. **Static model viewing payload (`3,754,828` bytes + license notice)**:
    - `model.glb` (`3,754,828` bytes; all `7` PBR maps embedded) + applicable license notices upon release.
-2. **Interactive magazine runtime payload (`3,801,912` bytes + peer runtime + user artwork)**:
+2. **Interactive magazine runtime payload (`3,804,655` bytes + peer runtime + user artwork)**:
    - `model.glb` (`3,754,828` bytes)
-   - `magazine_controller.mjs` (`47,084` bytes) or an equivalent compatible runtime controller
+   - `magazine_controller.mjs` (`49,827` bytes) or an equivalent compatible runtime controller
    - Runtime dependency `three` (verified with `0.186.1`), runtime configuration, consumer-supplied cover/page artwork, and applicable license notices.
 3. **Excluded authoring & validation files** (repository-only): `generate.py`, `model.blend`, `textures/*.png`, `validate_blender.py`, `validate_threejs.mjs`, `preview.webp`, `manifest.json`, `notes.md`.
 

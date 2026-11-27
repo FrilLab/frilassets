@@ -125,6 +125,18 @@ def main() -> None:
     assert not forbidden_leaks, f"Authoring/demo objects leaked into GLB: {forbidden_leaks}"
     assert "cameras" not in gltf_json, "Cameras leaked into canonical GLB"
 
+    # Verify centered maxHeightMeters on every artwork anchor clears both floor (Y=0) and base reveal (Y=0.065 m)
+    nodes_by_name = {n.get("name", ""): n for n in gltf_json.get("nodes", [])}
+    for aname in required_art_anchors:
+        anode = nodes_by_name[aname]
+        ay = anode["translation"][1]
+        extras = anode.get("extras", {})
+        max_h = extras.get("maxHeightMeters", 0.0)
+        bottom_y = ay - max_h * 0.5
+        assert bottom_y >= 0.249, (
+            f"{aname} centered maxHeightMeters={max_h} at Y={ay} dips to Y={bottom_y:.3f}m (< 0.25m floor clearance)"
+        )
+
     # Verify `model.blend` contains zero machine-local absolute external image paths
     bpy.ops.wm.open_mainfile(filepath=str(blend_path))
     for img in bpy.data.images:

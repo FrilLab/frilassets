@@ -90,7 +90,12 @@ TRACK_SLOT_W = 0.068        # 68 mm recessed ceiling slot width
 TRACK_SLOT_D = 0.052        # 52 mm recessed slot depth into ceiling
 
 # Exhibition Artwork Mounting Anchors (9 primary positions)
+# Centered mounting at Y = 1.55 m supports up to 2.60 m height with 0.25 m floor clearance
+# (0.185 m above the 0.065 m base shadow reveal). Taller works up to 5.60 m shift local +Y by (H - 2.60)/2.
 ARTWORK_CENTER_Y = 1.55
+ARTWORK_MIN_BOTTOM_Y = 0.25
+ARTWORK_MAX_CENTERED_H = round((ARTWORK_CENTER_Y - ARTWORK_MIN_BOTTOM_Y) * 2.0, 4)  # 2.60 m
+ARTWORK_MAX_SHIFTED_H = 5.60
 WALL_EPS = 0.002            # 2 mm proud of plaster surface to prevent coplanar z-fighting
 
 ARTWORK_SPECS = [
@@ -103,7 +108,7 @@ ARTWORK_SPECS = [
         "pos": (-6.40, ARTWORK_CENTER_Y, -HALF_D + WALL_EPS),
         "axes": ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
         "max_width": 4.80,
-        "max_height": 4.20,
+        "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.80,
         "nav_dist": 3.60,
         "track_pos": (-6.40, 8.84, TRACK_BACK_Z),
@@ -116,7 +121,7 @@ ARTWORK_SPECS = [
         "pos": (0.00, ARTWORK_CENTER_Y, -HALF_D + WALL_EPS),
         "axes": ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
         "max_width": 5.20,
-        "max_height": 4.50,
+        "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.80,
         "nav_dist": 3.80,
         "track_pos": (0.00, 8.84, TRACK_BACK_Z),
@@ -129,7 +134,7 @@ ARTWORK_SPECS = [
         "pos": (6.40, ARTWORK_CENTER_Y, -HALF_D + WALL_EPS),
         "axes": ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
         "max_width": 4.80,
-        "max_height": 4.20,
+        "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.80,
         "nav_dist": 3.60,
         "track_pos": (6.40, 8.84, TRACK_BACK_Z),
@@ -143,7 +148,7 @@ ARTWORK_SPECS = [
         "pos": (-HALF_W + WALL_EPS, ARTWORK_CENTER_Y, -5.20),
         "axes": ((0.0, 0.0, -1.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0)),
         "max_width": 3.80,
-        "max_height": 4.20,
+        "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
         "track_pos": (-TRACK_X, 8.84, -5.20),
@@ -156,7 +161,7 @@ ARTWORK_SPECS = [
         "pos": (-HALF_W + WALL_EPS, ARTWORK_CENTER_Y, 0.00),
         "axes": ((0.0, 0.0, -1.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0)),
         "max_width": 4.00,
-        "max_height": 4.20,
+        "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
         "track_pos": (-TRACK_X, 8.84, 0.00),
@@ -169,7 +174,7 @@ ARTWORK_SPECS = [
         "pos": (-HALF_W + WALL_EPS, ARTWORK_CENTER_Y, 5.20),
         "axes": ((0.0, 0.0, -1.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0)),
         "max_width": 3.80,
-        "max_height": 4.20,
+        "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
         "track_pos": (-TRACK_X, 8.84, 5.20),
@@ -183,7 +188,7 @@ ARTWORK_SPECS = [
         "pos": (HALF_W - WALL_EPS, ARTWORK_CENTER_Y, -5.20),
         "axes": ((0.0, 0.0, 1.0), (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0)),
         "max_width": 3.80,
-        "max_height": 4.20,
+        "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
         "track_pos": (TRACK_X, 8.84, -5.20),
@@ -196,7 +201,7 @@ ARTWORK_SPECS = [
         "pos": (HALF_W - WALL_EPS, ARTWORK_CENTER_Y, 0.00),
         "axes": ((0.0, 0.0, 1.0), (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0)),
         "max_width": 4.00,
-        "max_height": 4.20,
+        "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
         "track_pos": (TRACK_X, 8.84, 0.00),
@@ -209,7 +214,7 @@ ARTWORK_SPECS = [
         "pos": (HALF_W - WALL_EPS, ARTWORK_CENTER_Y, 5.20),
         "axes": ((0.0, 0.0, 1.0), (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0)),
         "max_width": 3.80,
-        "max_height": 4.20,
+        "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
         "track_pos": (TRACK_X, 8.84, 5.20),
@@ -1010,6 +1015,8 @@ def build_all_anchors(
         art_obj["targetWall"] = spec["wall"]
         art_obj["maxWidthMeters"] = spec["max_width"]
         art_obj["maxHeightMeters"] = spec["max_height"]
+        art_obj["minBottomYMeters"] = ARTWORK_MIN_BOTTOM_Y
+        art_obj["maxShiftedHeightMeters"] = ARTWORK_MAX_SHIFTED_H
         art_obj["recommendedClearanceMeters"] = spec["clearance"]
 
         # Corresponding spotlight anchor at ceiling track aperture aimed at artwork center (local -Z = beam)

@@ -306,6 +306,17 @@ window.__runValidation = async function () {
     const inwardDot = zAxis.dot(toCenter);
     const upDot = yAxis.dot(new THREE.Vector3(0, 1, 0));
 
+    // Verify advertised maxWidthMeters x maxHeightMeters centered directly on anchor clears floor & base reveal (Y >= 0.25 m)
+    const maxW = anchor.userData.maxWidthMeters;
+    const maxH = anchor.userData.maxHeightMeters;
+    const maxBottomY = worldPos.y - maxH * 0.5;
+    const maxTopY = worldPos.y + maxH * 0.5;
+    const maxEnvelopeClearsFloorAndCeiling =
+      typeof maxW === "number" &&
+      typeof maxH === "number" &&
+      maxBottomY >= 0.249 &&
+      maxTopY <= 8.75;
+
     // Mount artwork directly as a child in anchor's local XY plane (+Z facing into hall)
     const holder = new THREE.Group();
     holder.position.copy(worldPos);
@@ -347,6 +358,9 @@ window.__runValidation = async function () {
       worldPosition: worldPos.toArray().map((v) => Number(v.toFixed(4))),
       localUpDotWorldUp: Number(upDot.toFixed(6)),
       inwardNormal: zAxis.toArray().map((v) => Number(v.toFixed(4))),
+      maxCenteredSizeMeters: [maxW, maxH],
+      maxCenteredBottomYMeters: Number(maxBottomY.toFixed(4)),
+      maxEnvelopeClearsFloorAndCeiling,
       facesHallInterior: inwardDot > 0.25,
       uprightValid: upDot > 0.9999,
     });
@@ -562,7 +576,9 @@ window.__runValidation = async function () {
       multiInstanceMaterialIsolation: multiInstanceIsolated,
       allNineArtworkAnchorsValid:
         artworkAnchorChecks.length === 9 &&
-        artworkAnchorChecks.every((c) => c.facesHallInterior && c.uprightValid),
+        artworkAnchorChecks.every(
+          (c) => c.facesHallInterior && c.uprightValid && c.maxEnvelopeClearsFloorAndCeiling
+        ),
       allNavigationAnchorsValid:
         navChecks.length === 14 &&
         navChecks.every((c) => c.validWalkableEyePoint && c.upDot > 0.999),

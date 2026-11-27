@@ -121,17 +121,19 @@ Local coordinate convention on all 9 `Anchor_Artwork_*` nodes:
 - **Local `+Z` axis**: Inward-facing surface normal pointing into the exhibition hall (`2 mm` proud of the finished plaster surface to prevent coplanar z-fighting).
 - When loading custom artwork textures separately in Three.js onto a glTF plane, set `texture.colorSpace = THREE.SRGBColorSpace` (and `texture.flipY = false` only when reusing glTF-convention UV buffers; standard `THREE.PlaneGeometry` uses `flipY = true` default).
 
-| Anchor Name | Target Wall | glTF Position `(X, Y, Z)` (m) | Inward Normal `+Z` | Local Right `+X` | Max Mount `W × H` (m) | Rec. Clearance |
+- **Floor clearance & tall-work vertical offset**: Centered mounting (`local Y = 0` at `Y = 1.550 m`) supports artworks up to **`2.60 m` tall** (`maxHeightMeters = 2.60`), maintaining at least **`0.250 m` floor clearance** (`0.185 m` above the `0.065 m` base shadow reveal). For monumental works taller than `2.60 m` (up to `maxShiftedHeightMeters = 5.60 m`), shift the artwork's local `+Y` by `Math.max(0, 0.25 + height * 0.5 - 1.55)` so its bottom edge remains at `Y = 0.250 m`.
+
+| Anchor Name | Target Wall | glTF Position `(X, Y, Z)` (m) | Inward Normal `+Z` | Local Right `+X` | Max Centered `W × H` (m) | Rec. Clearance |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| `Anchor_Artwork_Back_01` | `Wall_Back` | `(-6.400, 1.550, -8.998)` | `(0, 0, +1)` | `(+1, 0, 0)` | `4.80 × 4.20` | `0.80 m` |
-| `Anchor_Artwork_Back_02` | `Wall_Back` | `( 0.000, 1.550, -8.998)` | `(0, 0, +1)` | `(+1, 0, 0)` | `5.20 × 4.50` | `0.80 m` |
-| `Anchor_Artwork_Back_03` | `Wall_Back` | `(+6.400, 1.550, -8.998)` | `(0, 0, +1)` | `(+1, 0, 0)` | `4.80 × 4.20` | `0.80 m` |
-| `Anchor_Artwork_Left_01` | `Wall_Left` | `(-11.998, 1.550, -5.200)` | `(+1, 0, 0)` | `(0, 0, -1)` | `3.80 × 4.20` | `0.70 m` |
-| `Anchor_Artwork_Left_02` | `Wall_Left` | `(-11.998, 1.550,  0.000)` | `(+1, 0, 0)` | `(0, 0, -1)` | `4.00 × 4.20` | `0.70 m` |
-| `Anchor_Artwork_Left_03` | `Wall_Left` | `(-11.998, 1.550, +5.200)` | `(+1, 0, 0)` | `(0, 0, -1)` | `3.80 × 4.20` | `0.70 m` |
-| `Anchor_Artwork_Right_01` | `Wall_Right` | `(+11.998, 1.550, -5.200)` | `(-1, 0, 0)` | `(0, 0, +1)` | `3.80 × 4.20` | `0.70 m` |
-| `Anchor_Artwork_Right_02` | `Wall_Right` | `(+11.998, 1.550,  0.000)` | `(-1, 0, 0)` | `(0, 0, +1)` | `4.00 × 4.20` | `0.70 m` |
-| `Anchor_Artwork_Right_03` | `Wall_Right` | `(+11.998, 1.550, +5.200)` | `(-1, 0, 0)` | `(0, 0, +1)` | `3.80 × 4.20` | `0.70 m` |
+| `Anchor_Artwork_Back_01` | `Wall_Back` | `(-6.400, 1.550, -8.998)` | `(0, 0, +1)` | `(+1, 0, 0)` | `4.80 × 2.60` | `0.80 m` |
+| `Anchor_Artwork_Back_02` | `Wall_Back` | `( 0.000, 1.550, -8.998)` | `(0, 0, +1)` | `(+1, 0, 0)` | `5.20 × 2.60` | `0.80 m` |
+| `Anchor_Artwork_Back_03` | `Wall_Back` | `(+6.400, 1.550, -8.998)` | `(0, 0, +1)` | `(+1, 0, 0)` | `4.80 × 2.60` | `0.80 m` |
+| `Anchor_Artwork_Left_01` | `Wall_Left` | `(-11.998, 1.550, -5.200)` | `(+1, 0, 0)` | `(0, 0, -1)` | `3.80 × 2.60` | `0.70 m` |
+| `Anchor_Artwork_Left_02` | `Wall_Left` | `(-11.998, 1.550,  0.000)` | `(+1, 0, 0)` | `(0, 0, -1)` | `4.00 × 2.60` | `0.70 m` |
+| `Anchor_Artwork_Left_03` | `Wall_Left` | `(-11.998, 1.550, +5.200)` | `(+1, 0, 0)` | `(0, 0, -1)` | `3.80 × 2.60` | `0.70 m` |
+| `Anchor_Artwork_Right_01` | `Wall_Right` | `(+11.998, 1.550, -5.200)` | `(-1, 0, 0)` | `(0, 0, +1)` | `3.80 × 2.60` | `0.70 m` |
+| `Anchor_Artwork_Right_02` | `Wall_Right` | `(+11.998, 1.550,  0.000)` | `(-1, 0, 0)` | `(0, 0, +1)` | `4.00 × 2.60` | `0.70 m` |
+| `Anchor_Artwork_Right_03` | `Wall_Right` | `(+11.998, 1.550, +5.200)` | `(-1, 0, 0)` | `(0, 0, +1)` | `3.80 × 2.60` | `0.70 m` |
 
 ### 6.2 Optional Floor Placement Anchors (`Exhibition_Anchors`)
 
@@ -201,16 +203,16 @@ Rather than embedding opaque collider meshes that could accidentally render in b
 
 - **Total glTF nodes**: `70` (`16` single-primitive meshes, `9` semantic materials, `54` hierarchy & semantic anchor nodes)
 - **Triangles / Vertices**: `6,036` triangles / `10,786` vertices (`0` degenerate faces)
-- **Canonical `model.glb` size**: `4,681,816` bytes (`4.46 MiB`), SHA-256 `fb7adda224c98b67aaaab2cc1fc92165084a0e1ae2c8a1244bdaa45ffb90f562`
+- **Canonical `model.glb` size**: `4,682,292` bytes (`4.47 MiB`), SHA-256 `517029ce989a2c41c28c78112b4bbc6b2f76d9cf37c18e18f9577f656f01063a`
 - **Estimated GPU texture memory (RGBA8 + mipchain)**: `16,777,214` bytes (`16.00 MiB`, reduced `-42.9%` from pre-optimization `28.00 MiB`)
-- **Three.js `GLTFLoader` load time**: `35.1–38.5 ms` (local HTTP loopback in headless Chromium WebGL)
+- **Three.js `GLTFLoader` load time**: `35.1–72.3 ms` (local HTTP loopback in headless Chromium WebGL)
 - **Draw calls (`1600×1000` with `2048²` PCFSoftShadowMap)**: `33` (`16` museum meshes + `1` exterior ground plane across shadow + main pass; `16` draw calls for the museum itself when shadows are disabled)
-- **Steady-state WebGL frame time (`90`-frame benchmark after warmup, `gl.finish()`)**: `0.102 ms` average, `0.200 ms` p95 (measured on Apple Silicon Metal/ANGLE headless Chromium; physical mobile hardware was not tested)
-- **Clean-checkout reproducibility**: Verified bit-for-bit identical `model.glb` SHA-256 (`fb7adda224c98b67aaaab2cc1fc92165084a0e1ae2c8a1244bdaa45ffb90f562`) regenerated from an isolated `/tmp` directory containing no `.work/` files, and verified relative `//textures/` paths in `model.blend`.
+- **Steady-state WebGL frame time (`90`-frame benchmark after warmup, `gl.finish()`)**: `0.102–0.120 ms` average, `0.200 ms` p95 (measured on Apple Silicon Metal/ANGLE headless Chromium; physical mobile hardware was not tested)
+- **Clean-checkout reproducibility**: Verified bit-for-bit identical `model.glb` SHA-256 (`517029ce989a2c41c28c78112b4bbc6b2f76d9cf37c18e18f9577f656f01063a`) regenerated from an isolated `/tmp` directory containing no `.work/` files, and verified relative `//textures/` paths in `model.blend`.
 
 ### 8.3 Consumer Distribution vs. Authoring Dependencies & Known Limitations
 
-- **Consumer runtime distribution payload**: `model.glb` (`4,681,816` bytes — 100% self-contained with embedded textures, materials, and semantic anchors). Optional catalog files: `preview.webp` (`36,148` bytes) and `manifest.json`.
+- **Consumer runtime distribution payload**: `model.glb` (`4,682,292` bytes — 100% self-contained with embedded textures, materials, and semantic anchors). Optional catalog files: `preview.webp` (`36,148` bytes) and `manifest.json`.
 - **Authoring & validation dependencies (not bundled into runtime apps)**: Blender `5.2.2 LTS` (`bpy`, `bmesh`, bundled `numpy`) for `generate.py` and `validate_blender.py`; Node.js `>= 20` with `three` and `playwright` (`NODE_PATH`) for `validate_threejs.mjs`; optional `cwebp` for regenerating `preview.webp`.
 - **Known limitations**:
   1. `model.glb` provides architectural geometry, PBR materials, semantic mounting/lighting/navigation anchors, and embedded walkable-bound metadata; camera controllers, player collision clamping, dynamic lighting rigs, and interactive exhibition UI must be supplied by the consuming application (e.g., **FrilCraft** / **FrilStudio**).

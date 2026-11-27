@@ -69,8 +69,8 @@
       {
         "path": "magazine_controller.mjs",
         "required": true,
-        "sizeBytes": 46235,
-        "sha256": "b2d6ea0e1ab033b56f2ab71a51b56d43eaa2c6094f2b354c473857948264bfe7",
+        "sizeBytes": 47084,
+        "sha256": "2e5335c36d99bb1e41d9dda1c452c2b15b18a4cdd615a2978f4adc84a2553565",
         "peerDependencies": [
           "three@^0.186.1"
         ],
@@ -89,7 +89,7 @@
       {
         "path": "notes.md",
         "sizeBytes": 18567,
-        "sha256": "f73aacd340829abb8b41626c3a9720fe4fe61f414c6b883cc598c82a96dc39e6"
+        "sha256": "41b22675281d26daa41dae498b88e8dc264a841902d367c5c8ad9547f8a17488"
       }
     ],
     "authoringDependencies": [
@@ -180,8 +180,8 @@
       },
       {
         "path": "validate_threejs.mjs",
-        "sizeBytes": 70794,
-        "sha256": "72cc8d66be5661c40107d41f0422ce93f6522d036c7a5928cbfbdb8c56d9e050"
+        "sizeBytes": 74334,
+        "sha256": "22860e0e6fc84b044b549e264bcb1893f8178b6d59cf717322161391bfd7fdfb"
       }
     ],
     "localIgnoredWorkspace": ".work/objects/editorial-magazine/ (diagnostic 12-view editorial & blank studio renders, asymmetric UV calibration charts, 9 Three.js WebGL acceptance screenshots, 1.0x normal-speed MP4 demo, 100-page bidirectional lifecycle MP4 demo, and validation JSON reports)"
@@ -221,8 +221,8 @@
       "widthX": 0.21074,
       "heightY": 0.00579,
       "depthZ": 0.2971,
-      "heightY100Pages": 0.009311,
-      "heightY200Pages": 0.017461
+      "heightY100Pages": 0.009385,
+      "heightY200Pages": 0.017535
     },
     "openSpreadNominalWidth": 0.42,
     "openSpreadMeasuredGltf": {

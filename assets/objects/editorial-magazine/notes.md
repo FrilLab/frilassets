@@ -109,9 +109,9 @@ Because glTF 2.0 and Three.js evaluate morph targets in **bind space** (prior to
 ### Consumer Distribution Payloads (`docs/asset-file-policy.md`)
 1. **Static model viewing payload (`3,754,828` bytes + license notice)**:
    - `model.glb` (`3,754,828` bytes; all `7` PBR maps embedded) + applicable license notices upon release.
-2. **Interactive magazine runtime payload (`3,801,063` bytes + peer runtime + user artwork)**:
+2. **Interactive magazine runtime payload (`3,801,912` bytes + peer runtime + user artwork)**:
    - `model.glb` (`3,754,828` bytes)
-   - `magazine_controller.mjs` (`46,235` bytes) or an equivalent compatible runtime controller
+   - `magazine_controller.mjs` (`47,084` bytes) or an equivalent compatible runtime controller
    - Runtime dependency `three` (verified with `0.186.1`), runtime configuration, consumer-supplied cover/page artwork, and applicable license notices.
 3. **Excluded authoring & validation files** (repository-only): `generate.py`, `model.blend`, `textures/*.png`, `validate_blender.py`, `validate_threejs.mjs`, `preview.webp`, `manifest.json`, `notes.md`.
 
@@ -145,7 +145,7 @@ NODE_PATH=<path-to-node_modules-with-three-and-playwright> node assets/objects/e
   - **Collision Methodology & Exclusions**: Exact world-space `BVHTree.FromBMesh(..., epsilon=0.0)` overlap tests across all `15` sheet-to-sheet, sheet-to-block, cover-to-block, and cover-to-cover pairs on all `606` poses returned **`0` intersections**. `Binding` is intentionally excluded from raw pair overlap because its inner PUR adhesive bed (`x <= +1.42 mm`) embeds the `s = 0..0.5 mm` spine roots by `~0.14 mm` to prevent hairline glue-slot gaps; root-to-binding attachment stays `<= 2.34 mm` everywhere.
   - **6-Clip Boundary Continuity & Isolation**: Consecutive clip boundaries (`Open → PageTurn → Close_Back → Open_Back → PageTurn_Back → Close → Open`) measure **`0.000000 mm`** vertex mismatch. Seeking `Magazine_PageTurn` or `Magazine_PageTurn_Back` (`33` channels each) produces **`0.000000 mm`** drift on covers, binding, resting sheets, and stack morphs.
 - **Controller-Level Three.js WebGL Results** (`validate_threejs.mjs`):
-  - **Tested Page Counts**: `4, 10, 24, 50, 100, and 200` interior pages (`2..100` physical leaves; closed heights `1.487..17.461 mm`), all preserving exact leaf conservation and zero empty-stack air gaps.
+  - **Tested Page Counts**: `4, 10, 24, 50, 100, and 200` interior pages (`2..100` physical leaves; closed heights `1.561..17.535 mm`), all preserving exact leaf conservation and zero empty-stack air gaps.
   - **100-Page Bidirectional Lifecycle**: `50` forward leaf turns + `closeBackCover` (`closedBackTopHeightMm = 8.747 mm`) + `openBackCover` + `50` backward leaf turns + `closeFrontCover` (`0.000000 mm` accumulated drift), `100` distinct asymmetric page artworks verified right-reading in both directions, max turning arc deviation `0.00244%`, cover/spread handoff continuity `<= 0.0706 mm`, tabletop clearance `minGlobalTabletopYMm = -0.0065 mm`.
   - **Interruptions & Caching**: Pause (`25%`, `50%`), resume, mid-turn reversal (`0.000000 mm` jump), cancel at `75%`, and `24` rapid alternating operations passed. Bounded `16`-page LRU cache capped WebGL memory (`<= 47` total textures across `100` pages) and `dispose()` reclaimed GPU textures (`46 → 44`).
   - **Desktop WebGL Performance**: `55.1 ms` GLB load, `0.440 ms/frame` average skin + shadow + visible PBR render (`43` draw calls across main camera + shadow pass) in headless Chrome WebGL (`ANGLE` on Apple M2 macOS).

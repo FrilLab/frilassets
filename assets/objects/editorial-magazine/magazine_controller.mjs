@@ -210,8 +210,15 @@ export class EditorialMagazineController {
   }
 
   get spineSpanMeters() {
-    // Total centerline-to-centerline spine span across Cover_Back + all interior leaves + Cover_Front
-    return this.coverThickness + this.leafCount * this.effectiveLeafPitch + 2 * this.airGap;
+    // Exact closed centerline-to-centerline spine span across Cover_Back + interior stack + top sheet + Cover_Front
+    const gap = Math.max(this.airGap, 0.000045);
+    const hasBlock = this.leafCount > 1;
+    return (
+      this.coverThickness +
+      Math.max(0, this.leafCount - 1) * this.effectiveLeafPitch +
+      this.leafThickness +
+      (hasBlock ? 3 : 2) * gap
+    );
   }
 
   /**
@@ -1130,9 +1137,18 @@ export class EditorialMagazineController {
     } else if (uTurn >= 1.0) {
       this._setChainBones("Page_Turning", xL, zPtLeft + 0.00004, th1Rest);
     } else {
-      const rProg = smootherstep(0.05, 0.95, uTurn);
-      const xPt = (1.0 - rProg) * xR + rProg * xL;
-      const zPt = (1.0 - rProg) * (zPtRight + 0.00004) + rProg * (zPtLeft + 0.00004) + 0.00045 * Math.sin(Math.PI * uTurn);
+      // Phase-gated root X and Z so the turning sheet clears the taller stack past vertical before descending
+      // onto the shorter stack (and climbs early before landing onto a taller destination stack)!
+      const leftRestCount = acc.leftInactiveLeaves + (hasPageL ? 1 : 0);
+      const rightRestCount = acc.rightInactiveLeaves + (hasPageR ? 1 : 0);
+      const imb = Math.max(-1.0, Math.min(1.0, (rightRestCount - leftRestCount) / 4.0));
+      const wRight = 0.5 * (1.0 + imb);
+      const rZ = rightRestCount >= leftRestCount
+        ? smootherstep(0.50, 0.96, uTurn)
+        : smootherstep(0.04, 0.50, uTurn);
+      const rX = wRight * smootherstep(0.35, 0.95, uTurn) + (1.0 - wRight) * smootherstep(0.05, 0.65, uTurn);
+      const xPt = (1.0 - rX) * xR + rX * xL;
+      const zPt = (1.0 - rZ) * (zPtRight + 0.00004) + rZ * (zPtLeft + 0.00004) + 0.00045 * Math.sin(Math.PI * uTurn);
 
       const baseProg = smootherstep(0.08, 0.92, uTurn);
       const liftEnv = uTurn < 0.56 ? Math.pow(Math.sin((Math.PI * uTurn) / 0.56), 1.25) : 0.0;

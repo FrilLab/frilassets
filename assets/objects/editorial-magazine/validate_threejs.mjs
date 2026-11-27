@@ -596,12 +596,64 @@ window.__runFinalAcceptance = async function () {
     return c;
   }
 
+  function extractCenterlineXY(grid) {
+    const midJ = Math.floor(grid.ny / 2);
+    const pts = [];
+    for (let i = 0; i < grid.ns; i++) {
+      const a = getDeformedWorldVertex(grid.gA.prim, grid.gA.rows[midJ][i]);
+      const b = getDeformedWorldVertex(grid.gB.prim, grid.gB.rows[midJ][i]);
+      pts.push([0.5 * (a.x + b.x), 0.5 * (a.y + b.y)]);
+    }
+    return pts;
+  }
+
+  function segDist2D(p1, p2, q1, q2) {
+    const orient = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+    const o1 = orient(p1, p2, q1), o2 = orient(p1, p2, q2);
+    const o3 = orient(q1, q2, p1), o4 = orient(q1, q2, p2);
+    if (o1 * o2 < 0 && o3 * o4 < 0) return 0;
+    const ptSeg = (p, a, b) => {
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const l2 = dx * dx + dy * dy;
+      if (l2 === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2));
+      return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+    };
+    return Math.min(ptSeg(p1, q1, q2), ptSeg(p2, q1, q2), ptSeg(q1, p1, p2), ptSeg(q2, p1, p2));
+  }
+
+  function minPolylineClearanceMm(cA, cB, halfThickSumM) {
+    let mn = +Infinity;
+    for (let i = 0; i < cA.length - 1; i++) {
+      for (let j = 0; j < cB.length - 1; j++) {
+        const d = segDist2D(cA[i], cA[i + 1], cB[j], cB[j + 1]);
+        if (d < mn) mn = d;
+      }
+    }
+    return (mn - halfThickSumM) * 1000;
+  }
+
+  function checkActiveTurnClearanceMm() {
+    const cPt = extractCenterlineXY(sheetGrids.Page_Turning);
+    let minClear = +Infinity;
+    if (ctrl.groups.Page_Right.visible) {
+      minClear = Math.min(minClear, minPolylineClearanceMm(cPt, extractCenterlineXY(sheetGrids.Page_Right), ctrl.leafThickness));
+    }
+    if (ctrl.groups.Page_Left.visible) {
+      minClear = Math.min(minClear, minPolylineClearanceMm(cPt, extractCenterlineXY(sheetGrids.Page_Left), ctrl.leafThickness));
+    }
+    minClear = Math.min(minClear, minPolylineClearanceMm(cPt, extractCenterlineXY(sheetGrids.Cover_Back), 0.5 * (ctrl.coverThickness + ctrl.leafThickness)));
+    minClear = Math.min(minClear, minPolylineClearanceMm(cPt, extractCenterlineXY(sheetGrids.Cover_Front), 0.5 * (ctrl.coverThickness + ctrl.leafThickness)));
+    return minClear;
+  }
+
   // =========================================================================
   // 3. Configurable Page Count Matrix: 4, 10, 24, 50, 100, 200 Pages (Sec 11 & 12)
   // =========================================================================
   while (ctrl.previous()) { /* reset to first spread before closing */ }
   ctrl.closeFrontCover(1.0);
   const pageCountMatrix = {};
+  let matrixClearanceAllPositive = true;
   for (const pCount of [4, 10, 24, 50, 100, 200]) {
     ctrl.closeFrontCover(1.0);
     ctrl.setPageCount(pCount);
@@ -621,21 +673,49 @@ window.__runFinalAcceptance = async function () {
     const accFirst = ctrl.getLeafAccounting();
     const emptyLeftNoGap = (!ctrl.groups.Pages_Block_Left.visible && !ctrl.groups.Page_Left.visible);
 
+    let minTurnClearMm = +Infinity;
+    // Exercise intermediate turn poses at k = 0 (maximum right-vs-left stack asymmetry!)
+    ctrl.beginTurnForward();
+    for (const u of [0.15, 0.25, 0.50, 0.75, 0.85]) {
+      ctrl.setTurnProgress(u);
+      minTurnClearMm = Math.min(minTurnClearMm, checkActiveTurnClearanceMm());
+    }
+    ctrl.cancelTurn();
+
     // Navigate to exact middle spread (k = floor(leafCount / 2))
     const midK = Math.floor(ctrl.leafCount / 2);
     for (let s = 0; s < midK; s++) ctrl.next();
     const accMid = ctrl.getLeafAccounting();
+    if (ctrl.beginTurnForward()) {
+      for (const u of [0.15, 0.25, 0.50, 0.75, 0.85]) {
+        ctrl.setTurnProgress(u);
+        minTurnClearMm = Math.min(minTurnClearMm, checkActiveTurnClearanceMm());
+      }
+      ctrl.cancelTurn();
+    }
+
+    // Navigate to k = leafCount - 1 (final leaf turn: maximum left-vs-right stack asymmetry!)
+    while (ctrl.leftLeaves < ctrl.leafCount - 1) ctrl.next();
+    if (ctrl.beginTurnForward()) {
+      for (const u of [0.15, 0.25, 0.50, 0.75, 0.85]) {
+        ctrl.setTurnProgress(u);
+        minTurnClearMm = Math.min(minTurnClearMm, checkActiveTurnClearanceMm());
+      }
+      ctrl.cancelTurn();
+    }
 
     // Navigate to last spread (k = leafCount: empty right stack!)
     while (ctrl.next()) { /* advance to end */ }
     const accLast = ctrl.getLeafAccounting();
     const emptyRightNoGap = (!ctrl.groups.Pages_Block_Right.visible && !ctrl.groups.Page_Right.visible);
+    if (!(minTurnClearMm > 0)) matrixClearanceAllPositive = false;
 
     pageCountMatrix[pCount] = {
       interiorPages: pCount,
       physicalLeaves: ctrl.leafCount,
       closedHeightMm: Number((maxClosedY * 1000).toFixed(3)),
       spineSpanMm: Number((ctrl.spineSpanMeters * 1000).toFixed(3)),
+      minIntermediateTurnClearanceMm: Number(minTurnClearMm.toFixed(4)),
       firstSpreadLeafConservationOk: accFirst.totalAccountedLeaves === ctrl.leafCount,
       midSpreadLeafConservationOk: accMid.totalAccountedLeaves === ctrl.leafCount,
       lastSpreadLeafConservationOk: accLast.totalAccountedLeaves === ctrl.leafCount,
@@ -1234,6 +1314,7 @@ window.__runFinalAcceptance = async function () {
     },
     glb101Deformation: glb101Report,
     pageCountMatrix,
+    matrixClearanceAllPositive,
     paperThicknessConfigOk,
     endurance100Report,
     interruptionReport,
@@ -1606,6 +1687,7 @@ try {
     data.structural.pageTurnIsolationMaxUnrelatedDriftMm > 1e-4 ||
     !data.endurance100Report.passed ||
     !data.interruptionReport.passed ||
+    !data.matrixClearanceAllPositive ||
     !data.instanceIsolationVerified ||
     !data.externalTextureReuploadVerified ||
     errors.length

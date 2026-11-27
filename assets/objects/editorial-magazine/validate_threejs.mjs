@@ -1095,9 +1095,61 @@ window.__runFinalAcceptance = async function () {
   scene.remove(clonedScene);
   const texAfterDisposeB = renderer.info.memory.textures;
 
+  // Regression Test D (PR #5 review): Pre-uploaded external THREE.Texture with flipY=true & NoColorSpace
+  // must trigger GPU re-upload (version increment + right-side-up sRGB pixels, zero WebGL errors)!
+  const extCanvas = document.createElement("canvas");
+  extCanvas.width = 64;
+  extCanvas.height = 64;
+  const extCtx = extCanvas.getContext("2d");
+  extCtx.fillStyle = "#d92b2b"; // Top half RED
+  extCtx.fillRect(0, 0, 64, 32);
+  extCtx.fillStyle = "#1f6feb"; // Bottom half BLUE
+  extCtx.fillRect(0, 32, 64, 32);
+  const preUploadedTex = new THREE.CanvasTexture(extCanvas);
+  preUploadedTex.flipY = true;
+  preUploadedTex.colorSpace = THREE.NoColorSpace;
+  const dummyQuad = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.1, 0.1),
+    new THREE.MeshBasicMaterial({ map: preUploadedTex })
+  );
+  dummyQuad.position.set(0.65, 0.05, 0);
+  scene.add(dummyQuad);
+  renderer.render(scene, camera); // Force initial GPU upload with flipY=true & NoColorSpace!
+  scene.remove(dummyQuad);
+  dummyQuad.geometry.dispose();
+  dummyQuad.material.dispose();
+  const verBefore = preUploadedTex.version;
+
+  ctrl.setPageArtwork(7, preUploadedTex); // At k=3, visibleRightPage is Page 7!
+  const verAfter = preUploadedTex.version;
+  camera.position.set(0.105, 0.35, 0.001);
+  camera.lookAt(0.105, 0.005, 0);
+  camera.updateMatrixWorld(true);
+  renderer.render(scene, camera);
+  const gl = renderer.getContext();
+  const pxTop = new Uint8Array(4);
+  const pxBot = new Uint8Array(4);
+  // Read upper (-Z -> upper half of screen) vs lower (+Z -> lower half of screen) of Page 7
+  gl.readPixels(Math.floor(width * 0.5), Math.floor(height * 0.68), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pxTop);
+  gl.readPixels(Math.floor(width * 0.5), Math.floor(height * 0.32), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pxBot);
+  const externalTextureReuploadVerified = Boolean(
+    verAfter > verBefore &&
+    preUploadedTex.flipY === false &&
+    preUploadedTex.colorSpace === THREE.SRGBColorSpace &&
+    pxTop[0] > pxTop[2] + 40 && // Top half rendered RED (R > B), NOT upside-down BLUE!
+    pxBot[2] > pxBot[0] + 40    // Bottom half rendered BLUE (B > R)!
+  );
+  preUploadedTex.dispose();
+  // Restore numbered canvas on Page 7
+  ctrl.setPageArtwork(7, generated100Artworks.get(7));
+
   // =========================================================================
   // 7. Runtime Skinning & Frame-Time Performance Benchmark (Section 17)
   // =========================================================================
+  // Reframe primary magazine at origin inside camera frustum before timed benchmark!
+  camera.position.set(0.24, 0.42, 0.44);
+  camera.lookAt(0, 0.015, 0);
+  camera.updateMatrixWorld(true);
   ctrl.beginTurnForward();
   const nBenchFrames = 120;
   const tBench0 = performance.now();
@@ -1186,6 +1238,7 @@ window.__runFinalAcceptance = async function () {
     endurance100Report,
     interruptionReport,
     instanceIsolationVerified,
+    externalTextureReuploadVerified,
     performanceReport,
     shots: enduranceShots,
   };
@@ -1554,6 +1607,7 @@ try {
     !data.endurance100Report.passed ||
     !data.interruptionReport.passed ||
     !data.instanceIsolationVerified ||
+    !data.externalTextureReuploadVerified ||
     errors.length
   ) {
     process.exitCode = 1;

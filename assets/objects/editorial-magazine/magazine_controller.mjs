@@ -334,8 +334,19 @@ export class EditorialMagazineController {
 
   _materializeTexture(source) {
     if (source && source.isTexture) {
-      source.flipY = false;
-      source.colorSpace = THREE.SRGBColorSpace;
+      const settingsChanged =
+        source.flipY !== false || source.colorSpace !== THREE.SRGBColorSpace;
+      if (settingsChanged) {
+        if (source.version > 0) {
+          // Drop stale GPU immutable texStorage2D (e.g. RGBA8 or prior flipY upload) before re-uploading
+          source.dispose();
+        }
+        source.flipY = false;
+        source.colorSpace = THREE.SRGBColorSpace;
+        source.needsUpdate = true;
+      } else if (source.version === 0) {
+        source.needsUpdate = true;
+      }
       return { tex: source, owned: false };
     }
     const tex = new THREE.CanvasTexture(source);

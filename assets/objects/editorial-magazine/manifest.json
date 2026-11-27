@@ -69,8 +69,8 @@
       {
         "path": "magazine_controller.mjs",
         "required": true,
-        "sizeBytes": 45797,
-        "sha256": "5a3b7096e2493e2ad43c40ac0db18de6e407f6be9516fc98488567e25e9d8c9b",
+        "sizeBytes": 46235,
+        "sha256": "b2d6ea0e1ab033b56f2ab71a51b56d43eaa2c6094f2b354c473857948264bfe7",
         "peerDependencies": [
           "three@^0.186.1"
         ],
@@ -88,8 +88,8 @@
       },
       {
         "path": "notes.md",
-        "sizeBytes": 18526,
-        "sha256": "05a426c00664598e2d476d6653249a3646ef7889d391be0eac634fcbe6661927"
+        "sizeBytes": 18567,
+        "sha256": "f73aacd340829abb8b41626c3a9720fe4fe61f414c6b883cc598c82a96dc39e6"
       }
     ],
     "authoringDependencies": [
@@ -180,8 +180,8 @@
       },
       {
         "path": "validate_threejs.mjs",
-        "sizeBytes": 68279,
-        "sha256": "3a2afdb81d4dcd522a7ced3e555757172b0aeb41f05d05e093870757ef18b101"
+        "sizeBytes": 70794,
+        "sha256": "72cc8d66be5661c40107d41f0422ce93f6522d036c7a5928cbfbdb8c56d9e050"
       }
     ],
     "localIgnoredWorkspace": ".work/objects/editorial-magazine/ (diagnostic 12-view editorial & blank studio renders, asymmetric UV calibration charts, 9 Three.js WebGL acceptance screenshots, 1.0x normal-speed MP4 demo, 100-page bidirectional lifecycle MP4 demo, and validation JSON reports)"
@@ -479,7 +479,8 @@
     "multiInstanceMaterialIsolationVerified": true,
     "boundedLruTextureDisposalVerified": true,
     "physicalMobileDeviceTested": false,
-    "desktopWebGlAvgFrameMs": 0.376,
+    "desktopWebGlAvgFrameMs": 0.44,
+    "desktopWebGlDrawCallsWithShadowPass": 43,
     "desktopWebGlEnvironment": "Headless Google Chrome WebGL ANGLE on Apple M2 macOS (three@0.186.1)",
     "manifoldMeshes": true,
     "bvhOverlapsAcrossAll606Samples": 0,

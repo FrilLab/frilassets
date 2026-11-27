@@ -1,0 +1,152 @@
+{
+  "id": "architecture/museum-open-hall",
+  "name": "Open Skylight Museum Hall",
+  "version": "0.1.0",
+  "status": "draft",
+  "assetLicense": null,
+  "codeLicense": "MIT",
+  "aiAssisted": true,
+  "provenance": [
+    {
+      "type": "procedural-blender-python",
+      "tool": "Blender 5.2.2 LTS (bpy / bmesh) + Python 3 NumPy spectral PBR synthesis",
+      "script": "generate.py",
+      "thirdPartyContent": false,
+      "sourcingDecision": "create",
+      "sourcingNotes": "Searched local FrilAssets packages and external CC0 repositories (Poly Haven, ambientCG, Sketchfab) on 2026-11-27; see notes.md for candidate URLs, license evidence, and visual inspection rejections. All architectural geometry, semantic anchors, and coherent periodic PBR maps are 100% original and deterministically generated from generate.py."
+    }
+  ],
+  "files": {
+    "generator": "generate.py",
+    "source": "model.blend",
+    "glb": "model.glb",
+    "preview": "preview.webp",
+    "notes": "notes.md",
+    "validateBlender": "validate_blender.py",
+    "validateThreejs": "validate_threejs.mjs",
+    "textures": [
+      "textures/wall_plaster_normal.png",
+      "textures/wall_plaster_roughness.png",
+      "textures/floor_concrete_basecolor.png",
+      "textures/floor_concrete_normal.png",
+      "textures/floor_concrete_roughness.png",
+      "textures/ceiling_plaster_normal.png"
+    ]
+  },
+  "distribution": {
+    "consumerRuntimeFiles": [
+      "model.glb"
+    ],
+    "optionalCatalogFiles": [
+      "preview.webp",
+      "manifest.json"
+    ],
+    "authoringOnlyFiles": [
+      "generate.py",
+      "model.blend",
+      "textures/",
+      "notes.md",
+      "validate_blender.py",
+      "validate_threejs.mjs"
+    ]
+  },
+  "coordinateSystem": {
+    "standard": "glTF-2.0-Y-up",
+    "unit": "meters",
+    "axes": {
+      "X": "Hall width (-12.00 m Wall_Left to +12.00 m Wall_Right)",
+      "Y": "Vertical height (0.00 m interior finished floor to +9.00 m primary ceiling soffit; +10.35 m skylight glass)",
+      "Z": "Hall depth (-9.00 m Wall_Back main exhibition wall to +9.00 m Wall_Entrance)"
+    },
+    "origin": [0.0, 0.0, 0.0],
+    "blenderToGltfMapping": "(X_gltf, Y_gltf, Z_gltf) = (X_blender, Z_blender, -Y_blender)"
+  },
+  "dimensionsMeters": {
+    "interiorClear": {
+      "width": 24.0,
+      "depth": 18.0,
+      "ceilingHeight": 9.0
+    },
+    "structuralShell": {
+      "exteriorWidth": 24.8,
+      "exteriorDepthWithPortal": 19.6,
+      "wallThickness": 0.4,
+      "entrancePortalDepth": 1.2,
+      "floorThickness": 0.32,
+      "overallHeight": 10.84
+    },
+    "openings": {
+      "mainEntrance": {
+        "width": 5.6,
+        "height": 4.6,
+        "frameThickness": 0.06
+      },
+      "primarySkylight": {
+        "widthAtCeiling": 13.6,
+        "depthAtCeiling": 11.4,
+        "widthAtWellTop": 13.76,
+        "depthAtWellTop": 11.56,
+        "glazingElevationY": 10.35,
+        "bays": "4x4 (16 panes)"
+      }
+    }
+  },
+  "materials": [
+    "Mat_Wall_Plaster",
+    "Mat_Floor_Concrete",
+    "Mat_Ceiling",
+    "Mat_Structural_Beam",
+    "Mat_Skylight_Frame",
+    "Mat_Skylight_Glass",
+    "Mat_Entrance_Frame",
+    "Mat_Lighting_Fixture",
+    "Mat_Trim"
+  ],
+  "exhibitionAnchors": [
+    { "name": "Anchor_Artwork_Back_01", "wall": "Wall_Back", "position": [-6.4, 1.55, -8.998], "inwardNormal": [0, 0, 1], "maxSizeMeters": [4.8, 4.2], "clearanceMeters": 0.8 },
+    { "name": "Anchor_Artwork_Back_02", "wall": "Wall_Back", "position": [0.0, 1.55, -8.998], "inwardNormal": [0, 0, 1], "maxSizeMeters": [5.2, 4.5], "clearanceMeters": 0.8 },
+    { "name": "Anchor_Artwork_Back_03", "wall": "Wall_Back", "position": [6.4, 1.55, -8.998], "inwardNormal": [0, 0, 1], "maxSizeMeters": [4.8, 4.2], "clearanceMeters": 0.8 },
+    { "name": "Anchor_Artwork_Left_01", "wall": "Wall_Left", "position": [-11.998, 1.55, -5.2], "inwardNormal": [1, 0, 0], "maxSizeMeters": [3.8, 4.2], "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Left_02", "wall": "Wall_Left", "position": [-11.998, 1.55, 0.0], "inwardNormal": [1, 0, 0], "maxSizeMeters": [4.0, 4.2], "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Left_03", "wall": "Wall_Left", "position": [-11.998, 1.55, 5.2], "inwardNormal": [1, 0, 0], "maxSizeMeters": [3.8, 4.2], "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Right_01", "wall": "Wall_Right", "position": [11.998, 1.55, -5.2], "inwardNormal": [-1, 0, 0], "maxSizeMeters": [3.8, 4.2], "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Right_02", "wall": "Wall_Right", "position": [11.998, 1.55, 0.0], "inwardNormal": [-1, 0, 0], "maxSizeMeters": [4.0, 4.2], "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Right_03", "wall": "Wall_Right", "position": [11.998, 1.55, 5.2], "inwardNormal": [-1, 0, 0], "maxSizeMeters": [3.8, 4.2], "clearanceMeters": 0.7 }
+  ],
+  "collisionContract": {
+    "walkableInteriorAabb": { "min": [-11.65, 0.0, -8.65], "max": [11.65, 2.6, 8.65] },
+    "entrancePortalWalkableAabb": { "min": [-2.5, 0.0, 8.65], "max": [2.5, 2.6, 10.2] },
+    "wallColliderAabbs": [
+      { "name": "Wall_Back", "min": [-12.4, 0.0, -9.4], "max": [12.4, 2.6, -9.0] },
+      { "name": "Wall_Left", "min": [-12.4, 0.0, -9.0], "max": [-12.0, 2.6, 9.0] },
+      { "name": "Wall_Right", "min": [12.0, 0.0, -9.0], "max": [12.4, 2.6, 9.0] },
+      { "name": "Wall_Entrance_Left", "min": [-12.4, 0.0, 9.0], "max": [-2.8, 2.6, 10.2] },
+      { "name": "Wall_Entrance_Right", "min": [2.8, 0.0, 9.0], "max": [12.4, 2.6, 10.2] }
+    ]
+  },
+  "nodeCount": 70,
+  "meshCount": 16,
+  "materialCount": 9,
+  "triangleCount": 6036,
+  "vertexCount": 10786,
+  "glbSizeBytes": 4681816,
+  "glbSha256": "fb7adda224c98b67aaaab2cc1fc92165084a0e1ae2c8a1244bdaa45ffb90f562",
+  "performance": {
+    "threejsGlbLoadTimeMs": 38.5,
+    "threejsAvgFrameTimeMs": 0.102,
+    "threejsP95FrameTimeMs": 0.2,
+    "threejsDrawCallsShadowAndMainPass": 33,
+    "estimatedGpuTextureMemoryBytes": 16777214,
+    "measurementEnvironment": "Headless Chromium WebGL (Playwright, Apple Silicon Metal/ANGLE, 1600x1000 viewport, 2048x2048 PCFSoftShadowMap); physical mobile device hardware not tested."
+  },
+  "validation": {
+    "visualReview": true,
+    "glbLoad": true,
+    "threejsRuntimeValidation": true,
+    "cleanCheckoutReproducibility": true,
+    "rightsReview": false
+  },
+  "publication": {
+    "sketchfabUrl": null
+  }
+}

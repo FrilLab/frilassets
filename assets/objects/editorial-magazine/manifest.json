@@ -69,8 +69,8 @@
       {
         "path": "magazine_controller.mjs",
         "required": true,
-        "sizeBytes": 46142,
-        "sha256": "90f37afcc509bc1c57d08b8e7625272d3694dce0ac0acac2484c9758250be427",
+        "sizeBytes": 45797,
+        "sha256": "5a3b7096e2493e2ad43c40ac0db18de6e407f6be9516fc98488567e25e9d8c9b",
         "peerDependencies": [
           "three@^0.186.1"
         ],
@@ -89,7 +89,7 @@
       {
         "path": "notes.md",
         "sizeBytes": 18526,
-        "sha256": "c6728b86d13e584637b74ef6f9aaf08a3c07e356867081f228a9719508cc782f"
+        "sha256": "05a426c00664598e2d476d6653249a3646ef7889d391be0eac634fcbe6661927"
       }
     ],
     "authoringDependencies": [
@@ -180,8 +180,8 @@
       },
       {
         "path": "validate_threejs.mjs",
-        "sizeBytes": 65427,
-        "sha256": "70fe0c5648a18e59315d268edec43c76f995e1b820d3337bf57f9d90ce30fe21"
+        "sizeBytes": 68279,
+        "sha256": "3a2afdb81d4dcd522a7ced3e555757172b0aeb41f05d05e093870757ef18b101"
       }
     ],
     "localIgnoredWorkspace": ".work/objects/editorial-magazine/ (diagnostic 12-view editorial & blank studio renders, asymmetric UV calibration charts, 9 Three.js WebGL acceptance screenshots, 1.0x normal-speed MP4 demo, 100-page bidirectional lifecycle MP4 demo, and validation JSON reports)"

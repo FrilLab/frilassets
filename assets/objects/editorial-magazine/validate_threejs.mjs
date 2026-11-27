@@ -980,6 +980,68 @@ window.__runFinalAcceptance = async function () {
   ctrl.commitTurn();
   if (ctrl.leftLeaves !== 3) interruptFailures.push("Backward commit did not return to k=3");
 
+  // Regression Test A: Single odd reverseTurnDirection() followed directly by cancelTurn() preserves exact leftLeaves!
+  ctrl.beginTurnForward();
+  ctrl.setTurnProgress(0.50);
+  ctrl.reverseTurnDirection();
+  if (ctrl.leftLeaves !== 3) interruptFailures.push("Odd reverseTurnDirection() mutated leftLeaves before commit");
+  ctrl.cancelTurn();
+  if (ctrl.leftLeaves !== 3 || ctrl.state !== "OPEN_SPREAD") {
+    interruptFailures.push("cancelTurn() after single reverseTurnDirection() did not restore k=3");
+  }
+
+  // Regression Test B (PR #5 review): Calling beginTurnBackward() during forward turn at k=0 (25% progress)
+  // preserves activeTurningLeaf === 1, pages 1/2, totalAccountedLeaves === 50, and zero vertex jump!
+  while (ctrl.previous()) { /* rewind to k = 0 */ }
+  ctrl.beginTurnForward();
+  ctrl.setTurnProgress(0.25);
+  const tipK0Before = evaluateGridSample(sheetGrids.Page_Turning).tipPos.clone();
+  ctrl.beginTurnBackward();
+  const tipK0After = evaluateGridSample(sheetGrids.Page_Turning).tipPos.clone();
+  const accK0Rev = ctrl.getLeafAccounting();
+  if (
+    accK0Rev.activeTurningLeaf !== 1 ||
+    accK0Rev.turningFrontPage !== 1 ||
+    accK0Rev.turningBackPage !== 2 ||
+    accK0Rev.totalAccountedLeaves !== 50 ||
+    Math.abs(ctrl.transitionProgress - 0.75) > 1e-6 ||
+    tipK0After.distanceTo(tipK0Before) * 1000 > 0.01
+  ) {
+    interruptFailures.push("beginTurnBackward() mid-turn at k=0 corrupted active leaf accounting or jumped pose");
+  }
+  ctrl.setTurnProgress(1.0);
+  ctrl.commitTurn();
+  if (ctrl.leftLeaves !== 0 || ctrl.getLeafAccounting().visibleRightPage !== 1) {
+    interruptFailures.push("Committing reversed turn back to right at k=0 did not land on k=0");
+  }
+
+  // Regression Test C (symmetric): Calling beginTurnForward() during backward turn at k=50 (30% progress)
+  while (ctrl.next()) { /* advance to k = 50 */ }
+  ctrl.beginTurnBackward();
+  ctrl.setTurnProgress(0.30);
+  const tipK50Before = evaluateGridSample(sheetGrids.Page_Turning).tipPos.clone();
+  ctrl.beginTurnForward();
+  const tipK50After = evaluateGridSample(sheetGrids.Page_Turning).tipPos.clone();
+  const accK50Rev = ctrl.getLeafAccounting();
+  if (
+    accK50Rev.activeTurningLeaf !== 50 ||
+    accK50Rev.turningFrontPage !== 99 ||
+    accK50Rev.turningBackPage !== 100 ||
+    accK50Rev.totalAccountedLeaves !== 50 ||
+    Math.abs(ctrl.transitionProgress - 0.70) > 1e-6 ||
+    tipK50After.distanceTo(tipK50Before) * 1000 > 0.01
+  ) {
+    interruptFailures.push("beginTurnForward() mid-turn at k=50 corrupted active leaf accounting or jumped pose");
+  }
+  ctrl.setTurnProgress(1.0);
+  ctrl.commitTurn();
+  if (ctrl.leftLeaves !== 50) {
+    interruptFailures.push("Committing reversed turn back to left at k=50 did not land on k=50");
+  }
+
+  // Return to k = 3 before rapid alternating loop
+  while (ctrl.leftLeaves > 3) ctrl.previous();
+
   // Rapid alternating forward & backward requests (24 rapid operations)
   for (let r = 0; r < 12; r++) {
     ctrl.beginTurnForward();

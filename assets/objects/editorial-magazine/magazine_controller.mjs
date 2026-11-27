@@ -195,6 +195,7 @@ export class EditorialMagazineController {
     this.pageCount = 56;
     this.leafCount = 28;
     this.leftLeaves = 0;         // Committed number of physical leaves on left side (0 .. leafCount)
+    this._turnBaseLeaves = 0;    // Active sheet base index in [0 .. leafCount - 1] during TURNING
     this.state = "CLOSED_FRONT";
     this.transitionProgress = 0; // Normalized [0, 1] for active cover or page transition
     this.turnDirection = 0;      // +1 forward (right -> left), -1 backward (left -> right), 0 idle
@@ -434,9 +435,9 @@ export class EditorialMagazineController {
     }
 
     if (this.state === "TURNING") {
-      // Forward turn from spread k -> k+1: active leaf is (k + 1).
-      // Backward turn from spread k -> k-1: active leaf is (k), moving from u=1 (left) toward u=0 (right)!
-      const baseK = this.turnDirection === +1 ? this.leftLeaves : this.leftLeaves - 1;
+      // `_turnBaseLeaves` is pinned when the turn begins so activeLeaf === _turnBaseLeaves + 1 stays invariant
+      // across mid-turn reversals (`reverseTurnDirection`, `beginTurnForward`, `beginTurnBackward`)!
+      const baseK = this._turnBaseLeaves;
       const activeLeaf = baseK + 1; // 1-based leaf index in [1..N]
       const leftRest = baseK;       // Total resting leaves on left [0..N-1]
       const rightRest = N - baseK - 1; // Total resting leaves on right [0..N-1]
@@ -611,15 +612,17 @@ export class EditorialMagazineController {
 
   beginTurnForward() {
     if (this.state === "TURNING") {
-      // Mid-turn direction request: keep exact physical sheet position!
-      this.turnDirection = +1;
       this.isPaused = false;
+      if (this.turnDirection === -1) {
+        return this.reverseTurnDirection();
+      }
       return true;
     }
     if (this.state !== "OPEN_SPREAD" || this.leftLeaves >= this.leafCount) {
       return false; // Boundary clamped!
     }
     this.state = "TURNING";
+    this._turnBaseLeaves = this.leftLeaves;
     this.turnDirection = +1;
     this.transitionProgress = 0.0;
     this.isPaused = false;
@@ -630,14 +633,17 @@ export class EditorialMagazineController {
 
   beginTurnBackward() {
     if (this.state === "TURNING") {
-      this.turnDirection = -1;
       this.isPaused = false;
+      if (this.turnDirection === +1) {
+        return this.reverseTurnDirection();
+      }
       return true;
     }
     if (this.state !== "OPEN_SPREAD" || this.leftLeaves <= 0) {
       return false; // Boundary clamped!
     }
     this.state = "TURNING";
+    this._turnBaseLeaves = this.leftLeaves - 1;
     this.turnDirection = -1;
     this.transitionProgress = 0.0; // Normalized backward progress 0 (on left) -> 1 (on right)
     this.isPaused = false;
@@ -683,26 +689,15 @@ export class EditorialMagazineController {
   }
 
   /**
-   * Reverse an in-flight incomplete turn smoothly without any geometric or artwork discontinuity!
+   * Reverse an in-flight incomplete turn smoothly without any geometric, leaf-accounting, or artwork discontinuity!
    */
   reverseTurnDirection() {
     if (this.state !== "TURNING") return false;
     // Physical right->left parameter u = (dir === +1) ? progress : (1 - progress).
-    // Flipping direction flips progress <- (1 - progress) AND adjusts target commit side!
-    // Wait: remember `this.leftLeaves` was NEVER mutated when `beginTurn*` started!
-    // Wait: if we started at k=5 with `beginTurnForward()` (leaf 6 lifting from right, u = 0.50),
-    // and the user reverses back toward the right: if they simply scrub `setTurnProgress(0.50 -> 0.00)` and `cancelTurn()`,
-    // leaf 6 returns to the right! Or if `reverseTurnDirection()` is called, we keep the same active sheet `baseK`
-    // and invert `progress` when needed; keeping `setTurnProgress(p)` monotonic or reversible via `u` is 100% continuous!
+    // Flipping direction inverts `transitionProgress` while keeping `_turnBaseLeaves` (active turning sheet)
+    // and `this.leftLeaves` (pre-turn committed spread index) invariant until `commitTurn()`.
     this.transitionProgress = 1.0 - this.transitionProgress;
-    // Swap committed anchor so commitTurn() lands on the opposite side of the active leaf!
-    if (this.turnDirection === +1) {
-      this.leftLeaves += 1;
-      this.turnDirection = -1;
-    } else {
-      this.leftLeaves -= 1;
-      this.turnDirection = +1;
-    }
+    this.turnDirection = -this.turnDirection;
     this._applyPose();
     return true;
   }
@@ -710,13 +705,14 @@ export class EditorialMagazineController {
   commitTurn() {
     if (this.state !== "TURNING") return false;
     if (this.turnDirection === +1) {
-      this.leftLeaves = Math.min(this.leafCount, this.leftLeaves + 1);
+      this.leftLeaves = Math.min(this.leafCount, this._turnBaseLeaves + 1);
     } else if (this.turnDirection === -1) {
-      this.leftLeaves = Math.max(0, this.leftLeaves - 1);
+      this.leftLeaves = Math.max(0, this._turnBaseLeaves);
     }
     this.state = "OPEN_SPREAD";
     this.turnDirection = 0;
     this.transitionProgress = 0;
+    this.isPaused = false;
     this._syncVisibleArtworks();
     this._applyPose();
     return true;
@@ -727,6 +723,7 @@ export class EditorialMagazineController {
     this.state = "OPEN_SPREAD";
     this.turnDirection = 0;
     this.transitionProgress = 0;
+    this.isPaused = false;
     this._syncVisibleArtworks();
     this._applyPose();
     return true;

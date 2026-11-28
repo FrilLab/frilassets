@@ -1,14 +1,17 @@
 # Open Skylight Museum Hall (`architecture/museum-open-hall`)
 
-## 1. Overview & Architectural Concept
+## 1. Overview & V2 Architectural Concept
 
-**Open Skylight Museum Hall** (`v0.2.0`) is a contemporary, real-world-scale museum exhibition hall designed for photography galleries, fine-art exhibitions, sculptural installations, digital showrooms, and interactive WebGL experiences across **FrilCraft**, **FrilStudio**, and **FrilRemotion**.
+**Open Skylight Museum Hall** (`v0.3.0` — Architectural Refinement & Visual Quality Pass) is a contemporary, real-world-scale museum exhibition hall designed for photography galleries, fine-art exhibitions, sculptural installations, digital showrooms, and interactive WebGL experiences across **FrilCraft**, **FrilStudio**, and **FrilRemotion**.
 
 Key architectural features:
-- **Monumental clear exhibition volume**: `24.00 m` wide × `18.00 m` deep × `9.00 m` ceiling height (`432.0 m²` column-free exhibition floor).
-- **Floating architectural ceiling canopy & perimeter side daylight coves**: The `9.00 m` acoustic mineral ceiling canopy spans cleanly from `Wall_Back` (`Z = -9.00 m`) to `Wall_Entrance` (`Z = +9.00 m`) while stopping `680 mm` short of `Wall_Left` and `Wall_Right` (`X = ±11.32 m`), forming two full-length `760 mm`-tall perimeter architectural coves (`Y = 9.00 m` to `9.76 m`, sealed light-tight above by the `9.76–10.68 m` structural roof slab) that wash the side exhibition walls in soft vertical daylight or warm evening grazing light.
-- **Integrated 5-bay canted skylight coffer**: `13.60 m × 11.80 m` ceiling aperture rising through a solid-manifold `4.8°` canted plaster daylight well (`Y = 9.00 m` to `10.68 m`, `13.88 m × 12.08 m` at top), articulated by four slender tapered transverse skylight blades (`Ceiling_Beams`, recessed mid-well at `Y = 9.82–10.60 m`), perimeter bearing channels & `18 mm` low-profile structural glass splines (`Skylight_Supports`), a powder-coated pale aluminum curb & transom system (`Skylight_Frame`), and fifteen independently toggleable low-iron laminated glazing panes (`Skylight_Glass`).
-- **Tectonic architectural detailing**: `400 mm` structural exterior walls, a `1.60 m`-deep stepped monumental entrance portal (`5.60 m × 4.80 m` clear opening) lined with a `55 mm` anodized warm pewter-bronze reveal band (`Entrance_Frame`), subtle `24 mm × 24 mm` recessed wall-to-floor shadow-gap channels (`Wall_Floor_Transitions`), power-troweled honed architectural concrete slabs with `2.8 mm` micro-beveled saw-cut control joints aligned with the entrance portal jambs (`±2.80 m`) and a flush `260 mm × 260 mm` gallery floor service hatch inlay (`Floor`), and a recessed U-shaped lighting track slot centered on the floating soffit wings (`X = ±9.06 m`, `Z = -7.35 m`) housing fifteen compact semi-recessed spotlights and ten trimless pinhole downlights (`Lighting_Fixtures`).
+- **Monumental clear exhibition volume**: `24.00 m` wide × `18.00 m` deep × `9.00 m` ceiling height (`432.0 m²` column-free main exhibition floor), preserving every foundation coordinate, semantic mesh slot, material slot, and anchor contract.
+- **Reconstructed `17.1°` pitched conservatory lantern skylight**: Replaces flat horizontal glass with a `15.20 m × 13.60 m` ceiling aperture rising through a two-tier recessed architectural cornice (`Y = 9.00 m → 9.34 m → 10.48 m`) into a `17.1°` pitched laminated glass roof (`Y = 10.56 m` eaves rising `2.42 m` to a `Y = 12.98 m` central structural ridge / `13.03 m` ridge cap). Articulated by five slender white-painted steel king-post collar trusses (`Ceiling_Beams`), seven pitched rafter pairs + longitudinal purlins + central ridge beam (`Skylight_Supports`), twenty-one conservatory glazing mullion bays + glazed triangular gable tympanums (`Skylight_Frame`), and sloped low-iron laminated glass (`Skylight_Glass`).
+- **Multi-room spatial continuity (zero empty sky voids)**:
+  - **`Entrance_Vestibule` (`Z = +10.40 m .. +15.40 m`)**: `14.40 m × 5.00 m × 6.60 m` architectural arrival gallery with baffled sightline wall and recessed overhead daylight clerestory beyond the `5.60 m × 4.80 m` entrance portal.
+  - **`Secondary_Gallery` (`Z = -9.90 m .. -15.70 m`) & `Wall_Back_Portal_Closure`**: Central `4.40 m × 4.40 m` dark-bronze-lined enfilade portal in `Wall_Back` connecting to a `10.80 m × 5.80 m × 6.80 m` secondary exhibition room with its own overhead daylight skylight slot and axial `Anchor_Artwork_Secondary_01`. A sliding pocket partition (`Wall_Back_Portal_Closure`) rests open inside `Wall_Back` (`x = -4.62 m`, `z = -0.38 m`) by default for deep enfilade sightlines, and slides to `(0, 0, 0)` to form a flush `24.00 m` rear wall supporting the full 9-artwork layout (`Anchor_Artwork_Back_02`).
+- **Tectonic architectural detailing & dual-UV neutral AO**: Welded T-junction-free plaster topology above portals, disjoint `18–22 mm` inset bronze portal sleeves (`Entrance_Frame`) and `32 mm × 28 mm` recessed shadow-gap channels (`Wall_Floor_Transitions`) that eliminate WebGL z-fighting, `640 mm`-wide perimeter side daylight coves (`Y = 9.00–9.72 m`), grounded medium-gray power-troweled concrete (`#8E8B85`, `6.40 m` UV repeat), and a path-traced neutral Cycles Ambient Occlusion / Sky-Access atlas (`textures/museum_ao.png`) on `UVMap_AO` (`TEXCOORD_1`) that gives real-time WebGL viewers soft architectural contact and ceiling-recess shading without baking directional light into replaceable `TEXCOORD_0` PBR maps.
+- **Independently adjustable spotlight heads**: Static recessed tracks (`Track_Left`, `Track_Right`, `Track_Back`) are separated from 15 child spotlight head nodes (`Fixture_Head_Back_01..05`, `Fixture_Head_Left_01..05`, `Fixture_Head_Right_01..05`) pivoted at their yoke hinges (`Y = 8.92 m`) with local `-Z` optical axes.
 
 ---
 
@@ -16,7 +19,7 @@ Key architectural features:
 
 - **Asset ID**: `architecture/museum-open-hall`
 - **Search dates**: `2026-11-27` and `2026-11-28`
-- **Local packages checked**: `assets/wedding/wedding-envelope`, `assets/stationery/fril-signature-seal`, `assets/objects/editorial-magazine`, `materials/*`, `textures/*`, `environments/*`, plus read-only checks of sibling workspaces (`frilcarft`, `fril-studio`, `friladd`). No reusable architectural hall, skylight, track fixture, mineral plaster, or honed concrete package existed locally.
+- **Local packages checked**: `assets/wedding/wedding-envelope`, `assets/stationery/fril-signature-seal`, `assets/objects/editorial-magazine`, `materials/*`, `textures/*`, `environments/*`, plus read-only checks of sibling workspaces (`frilcarft`, `fril-studio`, `friladd`). No reusable architectural hall, pitched skylight, track fixture, mineral plaster, or honed concrete package existed locally.
 
 | Query / Source | Candidate URL | Creator | License Evidence URL | Suitability / Blockers |
 | :--- | :--- | :--- | :--- | :--- |
@@ -28,7 +31,7 @@ Key architectural features:
 | ambientCG (`Plaster001`, `PaintedPlaster017`, `Concrete042A`, `Terrazzo004`) | `https://ambientcg.com/a/Plaster001`, `https://ambientcg.com/a/Concrete042A`, `https://ambientcg.com/a/Terrazzo004` | Lennart Demes (ambientCG) | `https://docs.ambientcg.com/license/` | Rejected after visual inspection: directional trowel gouges, repetitive central crack, dark exterior formwork pits, or high-contrast terrazzo chips that compete with exhibition sightlines. |
 
 - **Decision**: **`create`**
-- **Reason**: No rights-cleared CC0 museum hall model or clean contemporary interior museum plaster/honed-concrete map set met the architectural, modularity, non-repetitive world scale (`4.8 m` repeat), satin Fresnel reflection, and neutral-recolorability requirements. All geometry (`generate.py`) and coherent band-limited periodic PBR maps (`textures/*.png`) are authored originally from deterministic Python code with zero third-party content.
+- **Reason**: No rights-cleared CC0 museum hall model or clean contemporary interior museum plaster/honed-concrete map set met the architectural proportions, pitched conservatory skylight design, non-repetitive world scale (`6.0–6.4 m` repeat), satin Fresnel reflection, and neutral-recolorability requirements. All geometry (`generate.py`), coherent band-limited periodic PBR maps, and neutral Cycles AO (`textures/*.png`) are authored originally from deterministic Python code with zero third-party content.
 
 ---
 
@@ -36,13 +39,12 @@ Key architectural features:
 
 Exported glTF 2.0 coordinate convention (`+Y` up, metric meters, no manual Three.js transform required):
 
-- **`X` axis**: Hall width — `-12.00 m` (`Wall_Left` interior face) to `+12.00 m` (`Wall_Right` interior face) → **`24.00 m`** clear width (`24.80 m` outer structural width including `0.40 m` walls).
-- **`Y` axis**: Vertical height — **`0.00 m`** interior finished floor surface, **`9.00 m`** primary floating ceiling canopy soffit, **`9.76 m`** top of `680 mm` side daylight coves, **`10.68 m–10.70 m`** skylight laminated glass, **`10.90 m`** exterior skylight curb cap, **`-0.32 m`** structural slab soffit.
-- **`Z` axis**: Hall depth — `-9.00 m` (`Wall_Back` main exhibition wall interior face) to `+9.00 m` (`Wall_Entrance` interior face) → **`18.00 m`** clear depth (`-9.40 m` rear outer face to `+10.60 m` exterior entrance portal face = `20.00 m` total depth).
-- **Origin `(0, 0, 0)`**: Exact center of the interior finished floor at `Y = 0.00 m`.
-- **Main Entrance Opening**: Centered on `+Z` wall (`Z = +9.00 m` to `+10.60 m`), **`5.60 m` wide × `4.80 m` high** (`X ∈ [-2.80, +2.80]`, `Y ∈ [0.00, 4.80]`).
-- **Primary Skylight Opening**: Centered overhead, **`13.60 m` wide × `11.80 m` deep** (`X ∈ [-6.80, +6.80]`, `Z ∈ [-5.90, +5.90]`) at `Y = 9.00 m`, expanding smoothly to `13.88 m × 12.08 m` at `Y = 10.68 m`.
-- **Blender-to-glTF Conversion**: Geometry is authored via the proper `+90°` X-axis rotation `(X_blender, Y_blender, Z_blender) = (X_gltf, -Z_gltf, Y_gltf)`, and Empty anchor transforms use `M_blender = R_G2B @ M_gltf @ R_B2G`, which Blender's `export_yup=True` glTF 2.0 exporter maps back to exact `(X_gltf, Y_gltf, Z_gltf)` world coordinates and local axes.
+- **`X` axis**: Main hall width — `-12.00 m` (`Wall_Left` interior face) to `+12.00 m` (`Wall_Right` interior face) → **`24.00 m`** clear width (`24.80 m` outer structural width including `0.40 m` walls).
+- **`Y` axis**: Vertical height — **`0.00 m`** continuous interior finished floor across main hall, secondary gallery, and vestibule; **`9.00 m`** primary floating ceiling canopy soffit; **`9.72 m`** top of `640 mm` side daylight coves; **`10.56 m`** skylight glazing eaves rising at **`17.1°`** to **`12.98 m`** central structural ridge (`13.03 m` ridge cap); **`-0.32 m`** structural slab soffit.
+- **`Z` axis**: Depth — `-9.00 m` (`Wall_Back` main exhibition wall interior face) to `+9.00 m` (`Wall_Entrance` interior face) → **`18.00 m`** main hall clear depth; `-9.90 m` to `-15.70 m` (`Secondary_Gallery`, `5.80 m` clear depth); `+10.40 m` to `+15.40 m` (`Entrance_Vestibule`, `5.00 m` clear depth); `-16.10 m` to `+15.80 m` (`31.90 m` total structural exterior depth).
+- **Origin `(0, 0, 0)`**: Exact center of the main hall finished floor at `Y = 0.00 m`.
+- **Main Entrance Opening (`+Z`)**: `Z = +9.00 m` to `+10.40 m`, **`5.60 m` wide × `4.80 m` high** (`X ∈ [-2.80, +2.80]`, `Y ∈ [0.00, 4.80]`).
+- **Central Rear Enfilade Portal (`-Z`)**: `Z = -9.00 m` to `-9.90 m`, **`4.40 m` wide × `4.40 m` high** (`X ∈ [-2.20, +2.20]`, `Y ∈ [0.00, 4.40]`), leaving `9.80 m`-wide uninterrupted exhibition wings on both left and right (`Anchor_Artwork_Back_01` at `X = -6.60 m`, `Anchor_Artwork_Back_03` at `X = +6.60 m`), plus sliding pocket partition `Wall_Back_Portal_Closure`.
 
 ---
 
@@ -55,24 +57,31 @@ Museum_Open_Hall
 │   ├── Wall_Left
 │   ├── Wall_Right
 │   ├── Wall_Back
+│   ├── Wall_Back_Portal_Closure      (Open pocket @ [-4.62, 0, -0.38]; Closed flush @ [0, 0, 0])
+│   ├── Secondary_Gallery             (10.80 x 5.80 x 6.80 m sunlit rear enfilade gallery)
 │   ├── Wall_Entrance
+│   ├── Entrance_Vestibule            (14.40 x 5.00 x 6.60 m arrival vestibule)
 │   ├── Entrance_Frame
 │   ├── Ceiling
-│   ├── Ceiling_Beams
+│   ├── Ceiling_Beams                 (5 painted-steel king-post collar trusses)
 │   └── Wall_Floor_Transitions
 ├── Skylight
-│   ├── Skylight_Frame
-│   ├── Skylight_Supports
-│   └── Skylight_Glass
+│   ├── Skylight_Frame                (21 conservatory mullion bays + glazed gable ends)
+│   ├── Skylight_Supports             (7 pitched steel rafter pairs + purlins + ridge beam)
+│   └── Skylight_Glass                (17.1 deg sloped laminated panes + gable glass)
 ├── Lighting_Fixtures
 │   ├── Track_Left
+│   │   └── Fixture_Head_Left_01 .. 05
 │   ├── Track_Right
+│   │   └── Fixture_Head_Right_01 .. 05
 │   ├── Track_Back
+│   │   └── Fixture_Head_Back_01 .. 05
 │   └── Recessed_Fixtures
 ├── Exhibition_Anchors
 │   ├── Anchor_Artwork_Back_01 .. 03
 │   ├── Anchor_Artwork_Left_01 .. 03
 │   ├── Anchor_Artwork_Right_01 .. 03
+│   ├── Anchor_Artwork_Secondary_01   (Focal anchor on Secondary_Gallery rear wall)
 │   ├── Anchor_Place_Central_Installation
 │   ├── Anchor_Place_Pedestal_01 .. 02
 │   ├── Anchor_Place_Bench_01 .. 02
@@ -91,134 +100,107 @@ Museum_Open_Hall
     ├── Anchor_Navigation_Back
     ├── Anchor_Navigation_Left
     ├── Anchor_Navigation_Right
+    ├── Anchor_Navigation_Secondary
     └── Anchor_Navigation_Artwork_01 .. 09
 ```
 
 ---
 
-## 5. Material Customization Contract
+## 5. Material Customization & Dual-UV AO Contract
 
 | Material Slot | Assigned Meshes | Default Tone (sRGB) | Roughness / Metallic | Maps & Customization Guidance |
 | :--- | :--- | :---: | :---: | :--- |
-| `Mat_Wall_Plaster` | `Wall_Back`, `Wall_Left`, `Wall_Right`, `Wall_Entrance` | `#F3EFE7` | `~0.86` / `0.00` | Neutral near-white mineral clouding basecolor (`0.98–1.00`) + aligned normal & roughness maps (`4.8 m` world UV scale). Set `material.color` freely to any light or dark gallery tint. To customize a single wall independently, clone `Wall_Back.material = Wall_Back.material.clone()` and dispose the clone on teardown without disposing shared textures. |
-| `Mat_Floor_Concrete` | `Floor` | `#B4B0A8` | `~0.30` (`0.25–0.38`) / `0.00` | Neutral near-white mineral clouding basecolor map multiplied by `baseColorFactor`, plus aligned `1024²` power-troweled satin roughness & micro-normal maps (`4.8 m` UV scale, `IOR 1.52`) producing soft, realistic Fresnel reflections of skylight and artworks without mirror glare. |
-| `Mat_Ceiling` | `Ceiling` | `#E9E4DA` | `0.88` / `0.00` | Neutral near-white mineral basecolor + acoustic mineral normal map (`4.2 m` UV scale); warm mineral soffit tone freely recolorable. |
-| `Mat_Structural_Beam` | `Ceiling_Beams`, `Skylight_Supports` | `#F5F2EB` | `0.56` / `0.08` | Crisp warm-white painted architectural skylight blade finish; independently customizable from `Mat_Ceiling`. |
-| `Mat_Skylight_Frame` | `Skylight_Frame` | `#DCD8D0` | `0.38` / `0.36` | Powder-coated pale warm aluminum curb & transom finish. |
-| `Mat_Skylight_Glass` | `Skylight_Glass` | `#EEF5FA` (`alpha 0.14`) | `0.07` / `0.04` | Exports with glTF `alphaMode: "BLEND"` (`opacity: 0.14`) for broad real-time WebGL compatibility without transmission-pass overhead. Set `Skylight_Glass.castShadow = false` at runtime so directional sun shadows pass cleanly through, upgrade optionally to `THREE.MeshPhysicalMaterial({ transmission: 0.92, ior: 1.52, thickness: 0.02 })`, or hide `Skylight_Glass.visible = false`. |
-| `Mat_Entrance_Frame` | `Entrance_Frame` | `#524E49` | `0.38` / `0.42` | Anodized warm pewter-bronze architectural portal reveal liner. |
-| `Mat_Lighting_Fixture` | `Track_Left`, `Track_Right`, `Track_Back`, `Recessed_Fixtures` | `#302E2C` | `0.42` / `0.38` | Matte dark graphite semi-recessed spotlight & track channel housing. |
-| `Mat_Trim` | `Wall_Floor_Transitions` | `#3C3935` | `0.52` / `0.25` | Subtle `24 mm` recessed base and ceiling shadow-gap channel liner. |
+| `Mat_Wall_Plaster` | `Wall_Back`, `Wall_Back_Portal_Closure`, `Wall_Left`, `Wall_Right`, `Wall_Entrance`, `Secondary_Gallery`, `Entrance_Vestibule` | `#F6F4EE` | `~0.88` / `0.00` | Neutral near-white mineral clouding basecolor (`0.985–0.996`) + aligned normal & roughness maps on `TEXCOORD_0` (`6.0 m` world UV scale) + neutral Cycles AO (`textures/museum_ao.png`) on `TEXCOORD_1` (`aoMap`). Set `material.color` freely to any gallery tint without losing soft corner shading; clone `Wall_Back.material` to customize an accent wall independently. |
+| `Mat_Floor_Concrete` | `Floor` | `#8E8B85` | `~0.27` (`0.235–0.375`) / `0.00` | Grounded medium-gray power-troweled concrete (`1024²` mineral clouding basecolor, micro-normal, and satin roughness on `TEXCOORD_0` at `6.4 m` UV scale, `IOR 1.52`) + neutral Cycles AO on `TEXCOORD_1`, delivering natural Fresnel reflections of the pitched skylight and artworks. |
+| `Mat_Ceiling` | `Ceiling`, secondary/vestibule soffits | `#EEEBE3` | `0.90` / `0.00` | Warm mineral acoustic plaster (`TEXCOORD_0` `5.4 m` UV scale) + neutral Cycles AO (`TEXCOORD_1`) capturing soft skylight-well and perimeter cove gradation. |
+| `Mat_Structural_Beam` | `Ceiling_Beams`, `Skylight_Supports` | `#F8F7F3` | `0.44` / `0.14` | Crisp white painted architectural steel king-post trusses, rafters, and central ridge beam (`2.5 m` micro-normal). |
+| `Mat_Skylight_Frame` | `Skylight_Frame` | `#E4E2DC` | `0.34` / `0.38` | Powder-coated pale silver-white conservatory glazing mullions, transoms, and gable framing. |
+| `Mat_Skylight_Glass` | `Skylight_Glass` | `#EDF4FA` (`alpha 0.16`) | `0.06` / `0.05` | Standard glTF `BLEND` transparency (`opacity: 0.16`, `IOR 1.52`) for fast WebGL compatibility. Set `Skylight_Glass.castShadow = false` so directional sunlight casts crisp truss/mullion shadows across the walls and floor. |
+| `Mat_Entrance_Frame` | `Entrance_Frame` | `#423B34` | `0.38` / `0.38` | Warm dark bronze-walnut portal sleeve (`65 mm` deep, inset `18–22 mm` behind plaster faces on both entrance and rear enfilade portals). |
+| `Mat_Lighting_Fixture` | `Track_*`, `Fixture_Head_*`, `Recessed_Fixtures` | `#2C2B29` | `0.42` / `0.38` | Matte dark graphite recessed track channels and adjustable spotlight heads. |
+| `Mat_Trim` | `Wall_Floor_Transitions` | `#363431` | `0.52` / `0.28` | Disjoint `32 mm × 28 mm` recessed wall-to-floor and ceiling shadow-gap channel liner. |
 
 ---
 
-## 6. Exhibition Mounting, Placement, Lighting, & Navigation Anchors
+## 6. Exhibition Configurations, Adjustable Fixtures, & Runtime Helper (`museum_lighting.mjs`)
 
-### 6.1 Primary Wall-Mounted Artwork Anchors (`Exhibition_Anchors`)
+### 6.1 Dual Exhibition Configurations (Enfilade Open vs. 9-Artwork Closed)
+- **Configuration A — Open Enfilade (`default` in `model.glb`)**:
+  - `Wall_Back_Portal_Closure.position` is `(-4.62, 0.0, -0.38)` (tucked inside the left double-wall pocket of `Wall_Back`).
+  - Supports **8 main-hall artworks** (`Anchor_Artwork_Back_01`, `Anchor_Artwork_Back_03`, `Anchor_Artwork_Left_01..03`, `Anchor_Artwork_Right_01..03`) plus **1 axial focal artwork** in the sunlit secondary room (`Anchor_Artwork_Secondary_01` at `(0.00, 1.55, -15.697)`).
+- **Configuration B — Classic 9-Artwork Main Hall (`setRearPortalOpen(root, false)`)**:
+  - Slide `Wall_Back_Portal_Closure.position.set(0, 0, 0)` so its front face sits flush with `Wall_Back` at `Z = -9.00 m`.
+  - Restores the full uninterrupted `24.00 m` rear wall and enables all **9 main-hall artwork anchors** (`Anchor_Artwork_Back_01..03`, `Anchor_Artwork_Left_01..03`, `Anchor_Artwork_Right_01..03`).
 
-Local coordinate convention on all 9 `Anchor_Artwork_*` nodes:
-- **Local `XY` plane**: Artwork mounting plane (`+X` = viewer's right when facing the artwork, `+Y` = vertical world `+Y` up).
-- **Local `+Z` axis**: Inward-facing surface normal pointing into the exhibition hall (`2 mm` proud of the finished plaster surface to prevent coplanar z-fighting).
-- **Floor clearance & tall-work vertical offset**: Centered mounting (`local Y = 0` at `Y = 1.550 m`) supports artworks up to **`2.60 m` tall** (`maxHeightMeters = 2.60`), maintaining at least **`0.250 m` floor clearance** (`0.226 m` above the `0.024 m` base shadow reveal). For monumental works taller than `2.60 m` (up to `maxShiftedHeightMeters = 5.60 m`), shift the artwork's local `+Y` by `Math.max(0, 0.25 + height * 0.5 - 1.55)` so its bottom edge remains at `Y = 0.250 m`.
+| Anchor Name | Target Wall | glTF Position `(X, Y, Z)` (m) | Inward Normal `+Z` | Max Centered `W × H` (m) | Notes |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| `Anchor_Artwork_Back_01` | `Wall_Back` | `(-6.600, 1.550, -8.997)` | `(0, 0, +1)` | `4.60 × 2.60` | Always available (`9.80 m` left wing) |
+| `Anchor_Artwork_Back_02` | `Wall_Back_Portal_Closure` | `( 0.000, 1.550, -8.997)` | `(0, 0, +1)` | `4.00 × 2.60` | Use when `Wall_Back_Portal_Closure` is closed `(0,0,0)` |
+| `Anchor_Artwork_Back_03` | `Wall_Back` | `(+6.600, 1.550, -8.997)` | `(0, 0, +1)` | `4.60 × 2.60` | Always available (`9.80 m` right wing) |
+| `Anchor_Artwork_Left_01..03` | `Wall_Left` | `(-11.997, 1.550, -5.20 / 0.00 / +5.20)` | `(+1, 0, 0)` | `3.80–4.00 × 2.60` | Always available |
+| `Anchor_Artwork_Right_01..03` | `Wall_Right` | `(+11.997, 1.550, -5.20 / 0.00 / +5.20)` | `(-1, 0, 0)` | `3.80–4.00 × 2.60` | Always available |
+| `Anchor_Artwork_Secondary_01` | `Secondary_Gallery` | `( 0.000, 1.550, -15.697)` | `(0, 0, +1)` | `4.20 × 2.60` | Axial focal wall through open rear portal |
 
-| Anchor Name | Target Wall | glTF Position `(X, Y, Z)` (m) | Inward Normal `+Z` | Local Right `+X` | Max Centered `W × H` (m) | Rec. Clearance |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| `Anchor_Artwork_Back_01` | `Wall_Back` | `(-6.400, 1.550, -8.998)` | `(0, 0, +1)` | `(+1, 0, 0)` | `4.80 × 2.60` | `0.80 m` |
-| `Anchor_Artwork_Back_02` | `Wall_Back` | `( 0.000, 1.550, -8.998)` | `(0, 0, +1)` | `(+1, 0, 0)` | `5.20 × 2.60` | `0.80 m` |
-| `Anchor_Artwork_Back_03` | `Wall_Back` | `(+6.400, 1.550, -8.998)` | `(0, 0, +1)` | `(+1, 0, 0)` | `4.80 × 2.60` | `0.80 m` |
-| `Anchor_Artwork_Left_01` | `Wall_Left` | `(-11.998, 1.550, -5.200)` | `(+1, 0, 0)` | `(0, 0, -1)` | `3.80 × 2.60` | `0.70 m` |
-| `Anchor_Artwork_Left_02` | `Wall_Left` | `(-11.998, 1.550,  0.000)` | `(+1, 0, 0)` | `(0, 0, -1)` | `4.00 × 2.60` | `0.70 m` |
-| `Anchor_Artwork_Left_03` | `Wall_Left` | `(-11.998, 1.550, +5.200)` | `(+1, 0, 0)` | `(0, 0, -1)` | `3.80 × 2.60` | `0.70 m` |
-| `Anchor_Artwork_Right_01` | `Wall_Right` | `(+11.998, 1.550, -5.200)` | `(-1, 0, 0)` | `(0, 0, +1)` | `3.80 × 2.60` | `0.70 m` |
-| `Anchor_Artwork_Right_02` | `Wall_Right` | `(+11.998, 1.550,  0.000)` | `(-1, 0, 0)` | `(0, 0, +1)` | `4.00 × 2.60` | `0.70 m` |
-| `Anchor_Artwork_Right_03` | `Wall_Right` | `(+11.998, 1.550, +5.200)` | `(-1, 0, 0)` | `(0, 0, +1)` | `3.80 × 2.60` | `0.70 m` |
+### 6.2 Adjustable Spotlight Heads & Three.js Lighting Controller (`museum_lighting.mjs`)
+- Each track (`Track_Left` at `X = -9.48 m`, `Track_Right` at `X = +9.48 m`, `Track_Back` at `Z = -7.90 m`) parents 5 instanced `Fixture_Head_*` nodes pivoted at `Y = 8.920 m` with **local `-Z` aligned to the optical beam**.
+- Optional companion ES module `museum_lighting.mjs` configures architectural sky-bounce PMREM, dual-UV `aoMapIntensity`, portal state, spotlight aiming, and presets (`"soft_daylight"`, `"direct_sun"`, `"evening"`):
+  ```js
+  import { applyMuseumLighting, setRearPortalOpen, aimSpotlightHead } from './museum_lighting.mjs';
 
-### 6.2 Optional Floor Placement Anchors (`Exhibition_Anchors`)
-
-All floor placement anchors rest on `Y = 0.000 m` with local `+Y` up and local `+Z` facing the primary presentation direction:
-- `Anchor_Place_Central_Installation`: `(0.00, 0.00, -0.60)`, facing `+Z` `(0, 0, +1)` toward arriving visitors.
-- `Anchor_Place_Pedestal_01` / `02`: `(-3.80, 0.00, -2.20)` and `(+3.80, 0.00, -2.20)`, facing `+Z`.
-- `Anchor_Place_Bench_01` / `02`: `(-3.40, 0.00, +1.80)` and `(+3.40, 0.00, +1.80)`, facing `-Z` toward the main exhibition zone.
-- `Anchor_Place_Info_Stand` / `Anchor_Place_Invitation_Display`: `(-3.60, 0.00, +6.80)` and `(+3.60, 0.00, +6.80)` flanking the entrance arrival zone.
-- `Anchor_Place_Partition_01` / `02`: `(-4.80, 0.00, -0.60)` and `(+4.80, 0.00, -0.60)` for optional freestanding exhibition walls.
-
-### 6.3 Lighting Anchors (`Lighting_Anchors`) & Runtime Lighting Guidance
-
-Canonical `model.glb` intentionally omits baked directional shadows and embedded runtime lights (`export_lights=False`) so consumers control shadow budget and mood:
-- `Anchor_Light_Back_01..03` (`(-6.40 / 0.00 / +6.40, 8.92, -7.35)`), `Anchor_Light_Left_01..03` (`(-9.06, 8.92, -5.20 / 0.00 / +5.20)`), and `Anchor_Light_Right_01..03` (`(+9.06, 8.92, -5.20 / 0.00 / +5.20)`) sit at the semi-recessed track spotlight apertures with **local `-Z` aimed directly at the corresponding `Anchor_Artwork_*` center**.
-- `Anchor_Light_Center_01..02` (`(±3.40, 8.95, 0.00)`) aim at the central installation zone `(0.00, 1.00, -0.60)`.
-- `Anchor_Light_Ambient_01..04` mark perimeter ceiling downlight emission points (`(±7.40, 8.95, +7.80)` and `(±10.20, 8.95, -7.80)`).
-- **Blender Authoring vs. Runtime Renderer**:
-  - *Blender Cycles Authoring*: Uses `Studio_Preview` collection area lights (`Studio_Skylight_Soft_Dome`, `17.4 m` linear `Studio_Cove_Left` / `Studio_Cove_Right` side-cove grazers, `Studio_Direct_Sun`, and `3000K` `Studio_Spot_*` lamps) plus `Studio_Foyer_*` arrival vestibule backdrop; all `Studio_*` and `Demo_*` objects are excluded from `model.glb`.
-  - *Three.js / WebGL Runtime*: Pair neutral environment IBL (`RoomEnvironment` or overcast HDRI, `environmentIntensity ~ 0.5–0.7`) + `HemisphereLight(0xf6f8fc, 0xd8d2c8, 0.85)` for Soft Daylight; add one `DirectionalLight(0xfff5e4, 2.25)` through the skylight (`Skylight_Glass.castShadow = false`) for Direct Sunlight; or lower ambient intensity (`~0.15`) and attach selective `SpotLight` instances (`3000K` `#ffedd6`, `angle ~ 38°`, `penumbra ~ 0.48`) to `Anchor_Light_*` transforms for Evening Exhibition.
-
-### 6.4 Navigation Anchors (`Navigation_Anchors`)
-
-All 14 navigation anchors sit at human eye height **`Y = 1.600 m`** (`local -Z` = forward look vector, `local +Y` = world up):
-- `Anchor_Navigation_Entrance`: `(0.00, 1.60, +8.20)` → looks `-Z` across the full hall.
-- `Anchor_Navigation_Center`: `(0.00, 1.60, +1.50)` → looks `-Z` toward `Wall_Back`.
-- `Anchor_Navigation_Back`: `(0.00, 1.60, -4.20)` → wide view of `Wall_Back`.
-- `Anchor_Navigation_Left`: `(-6.20, 1.60, 0.00)` → looks `-X` across `Wall_Left`.
-- `Anchor_Navigation_Right`: `(+6.20, 1.60, 0.00)` → looks `+X` across `Wall_Right`.
-- `Anchor_Navigation_Artwork_01..03`: `(-6.40 / 0.00 / +6.40, 1.60, -5.398 / -5.198)` (`3.60 m`–`3.80 m` viewing distance from `Anchor_Artwork_Back_01..03`).
-- `Anchor_Navigation_Artwork_04..06`: `(-8.498, 1.60, -5.20 / 0.00 / +5.20)` (`3.50 m` viewing distance from `Anchor_Artwork_Left_01..03`).
-- `Anchor_Navigation_Artwork_07..09`: `(+8.498, 1.60, -5.20 / 0.00 / +5.20)` (`3.50 m` viewing distance from `Anchor_Artwork_Right_01..03`).
+  const rig = applyMuseumLighting(scene, renderer, gltf.scene, { mode: 'soft_daylight' });
+  setRearPortalOpen(gltf.scene, true); // false closes Wall_Back_Portal_Closure for 9-artwork mode
+  aimSpotlightHead(gltf.scene, 'Fixture_Head_Left_03', new THREE.Vector3(-11.997, 1.55, 0.0));
+  ```
 
 ---
 
 ## 7. Collision & Walkable-Space Contract
 
-`Museum_Open_Hall` embeds explicit metric walkable bounds on `Museum_Open_Hall.userData.walkableBoundsMeters` (and documents wall AABBs in `manifest.json`) limited to human walking height (`Y ∈ [0.00, 2.60 m]`):
-- **Primary Interior Walkable Zone (`0.35 m` player-radius buffer from `±12.0 m` / `±9.0 m` walls)**:
-  `X ∈ [-11.65, +11.65]`, `Z ∈ [-8.65, +8.65]`, `Y = 0.00 m` floor.
-- **Entrance Portal Pass-Through Zone (`0.30 m` buffer inside `±2.80 m` portal jambs)**:
-  `X ∈ [-2.50, +2.50]`, `Z ∈ [+8.65, +10.60]`, `Y = 0.00 m` floor.
-- **Wall Blocking AABBs (`Y ∈ [0.00, 2.60 m]`)**:
-  - `Wall_Back`: `[-12.40, +12.40] × [0.00, 2.60] × [-9.40, -9.00]`
-  - `Wall_Left`: `[-12.40, -12.00] × [0.00, 2.60] × [-9.00, +9.00]`
-  - `Wall_Right`: `[+12.00, +12.40] × [0.00, 2.60] × [-9.00, +9.00]`
-  - `Wall_Entrance_Left`: `[-12.40, -2.80] × [0.00, 2.60] × [+9.00, +10.60]`
-  - `Wall_Entrance_Right`: `[+2.80, +12.40] × [0.00, 2.60] × [+9.00, +10.60]`
+`Museum_Open_Hall` embeds metric walkable bounds on `Museum_Open_Hall.userData.walkableBoundsMeters` (`Y ∈ [0.00, 2.60 m]`):
+- **Main Hall Walkable Zone**: `X ∈ [-11.65, +11.65]`, `Z ∈ [-8.65, +8.65]`, `Y = 0.00 m`.
+- **Entrance Portal & Arrival Vestibule**: `X ∈ [-2.50, +2.50]`, `Z ∈ [+8.65, +10.40]` leading into `X ∈ [-6.85, +6.85]`, `Z ∈ [+10.40, +15.05]`.
+- **Rear Enfilade Portal & Secondary Gallery (when `Wall_Back_Portal_Closure` is open)**: `X ∈ [-1.90, +1.90]`, `Z ∈ [-9.90, -8.65]` leading into `X ∈ [-5.05, +5.05]`, `Z ∈ [-15.35, -9.90]`. When `Wall_Back_Portal_Closure` is closed at `(0, 0, 0)`, clamp main-hall `Z >= -8.65 m` across the full width.
 
 ---
 
 ## 8. Texture Maps, Measured Performance, & File Packaging
 
-### 8.1 Authoring & Embedded Runtime Texture Maps
+### 8.1 Authoring & Embedded Runtime Texture Maps (`8` PNGs, `4,799,196` bytes)
 
-| File | Resolution | Color Space | Repeat Scale | Size (Bytes) | Role |
+| File | Resolution | Color Space | UV Channel / Scale | Size (Bytes) | Role |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| `textures/wall_plaster_basecolor.png` | `512 × 512` | `sRGB` | `4.80 m` | `125,838` | Neutral near-white mineral clouding (`0.98–1.00`, multiplied by `baseColorFactor`) |
-| `textures/wall_plaster_normal.png` | `1024 × 1024` | Linear (`Non-Color`, OpenGL `+Y`) | `4.80 m` | `1,450,661` | Fine lime-mineral gallery plaster micro-normal |
-| `textures/wall_plaster_roughness.png` | `512 × 512` | Linear (`Non-Color`) | `4.80 m` | `127,023` | Coherent matte plaster roughness (`~0.82–0.90`) |
-| `textures/floor_concrete_basecolor.png` | `512 × 512` | `sRGB` | `4.80 m` | `198,960` | Neutral near-white poured concrete clouding (multiplied by `baseColorFactor`) |
-| `textures/floor_concrete_normal.png` | `1024 × 1024` | Linear (`Non-Color`, OpenGL `+Y`) | `4.80 m` | `875,829` | Honed concrete micro-normal & subtle mineral pores |
-| `textures/floor_concrete_roughness.png` | `1024 × 1024` | Linear (`Non-Color`) | `4.80 m` | `560,126` | Power-troweled satin concrete roughness (`0.25–0.38`) |
-| `textures/ceiling_plaster_normal.png` | `512 × 512` | Linear (`Non-Color`, OpenGL `+Y`) | `4.20 m / 2.50 m` | `491,844` | Acoustic mineral ceiling & skylight blade micro-normal |
+| `textures/wall_plaster_basecolor.png` | `512 × 512` | `sRGB` | `UVMap` (`6.00 m`) | `80,853` | Neutral near-white mineral clouding (`0.985–0.996`) |
+| `textures/wall_plaster_normal.png` | `1024 × 1024` | Linear (`Non-Color`, OpenGL `+Y`) | `UVMap` (`6.00 m`) | `1,459,788` | Fine lime-mineral gallery plaster micro-normal |
+| `textures/wall_plaster_roughness.png` | `512 × 512` | Linear (`Non-Color`) | `UVMap` (`6.00 m`) | `126,385` | Coherent matte plaster roughness (`~0.85–0.91`) |
+| `textures/floor_concrete_basecolor.png` | `1024 × 1024` | `sRGB` | `UVMap` (`6.40 m`) | `956,375` | Neutral concrete mineral clouding (`0.88–0.99`, multiplied by `#8E8B85`) |
+| `textures/floor_concrete_normal.png` | `1024 × 1024` | Linear (`Non-Color`, OpenGL `+Y`) | `UVMap` (`6.40 m`) | `860,979` | Power-troweled concrete micro-normal & fine mineral pores |
+| `textures/floor_concrete_roughness.png` | `1024 × 1024` | Linear (`Non-Color`) | `UVMap` (`6.40 m`) | `574,722` | Power-troweled satin concrete roughness (`0.235–0.375`) |
+| `textures/ceiling_plaster_normal.png` | `512 × 512` | Linear (`Non-Color`, OpenGL `+Y`) | `UVMap` (`5.40 m / 2.50 m`) | `476,751` | Acoustic mineral ceiling & painted steel truss micro-normal |
+| `textures/museum_ao.png` | `1024 × 1024` | Linear (`Non-Color`) | `UVMap_AO` (`TEXCOORD_1`) | `263,343` | Path-traced neutral Cycles Ambient Occlusion / Sky-Access atlas (`glTF occlusionTexture`) |
 
-### 8.2 Measured Geometry, Runtime Performance, & Optimization Analysis
+### 8.2 Measured Geometry, Runtime Performance, & Clean-Checkout Verification
 
-- **Total glTF nodes**: `70` (`16` single-primitive meshes, `9` semantic materials, `54` hierarchy & semantic anchor nodes)
-- **Triangles / Vertices**: `5,740` triangles / `10,218` vertices (`0` degenerate faces; `-4.9%` leaner than `v0.1.0` while adding side daylight coves, solid-manifold 5-bay skylight well, stepped portal reveal, and floor hatch inlay)
-- **Canonical `model.glb` size**: `4,560,896` bytes (`4.35 MiB`), SHA-256 `c233695276b3021fbe094813516931bc9513fa3ee8d1d519fd4b31da4b1cdad9`
-- **Estimated GPU texture memory (`7` embedded textures, RGBA8 + mipchain)**: `22,369,619` bytes (`21.33 MiB` — uses `512×512` for low-frequency clouding maps while retaining `1024×1024` on close-up normal and power-troweled concrete roughness maps to preserve crisp satin reflection modulation)
-- **Three.js `GLTFLoader` load time**: `38.9 ms` (local HTTP loopback in headless Chromium WebGL)
-- **Draw calls (`1600×1000` with `2048²` PCFSoftShadowMap)**: `33` (`16` museum meshes + `1` exterior ground plane across shadow + main pass; `16` draw calls for the museum itself when shadows are disabled — Static structural elements within each semantic role are already combined into single-primitive meshes while preserving independent wall/ceiling/glazing/fixture customization)
-- **Steady-state WebGL frame time (`90`-frame benchmark after warmup, `gl.finish()`)**: `0.130 ms` average, `0.200 ms` p95 (measured on Apple Silicon Metal/ANGLE headless Chromium; physical mobile device hardware was not tested)
-- **Clean-checkout reproducibility**: Verified bit-for-bit identical `model.glb` SHA-256 (`c233695276b3021fbe094813516931bc9513fa3ee8d1d519fd4b31da4b1cdad9`) regenerated from an isolated `/tmp` clean copy containing only tracked package files (no `.work/`), and verified relative `//textures/` paths in `model.blend`.
+- **Total glTF nodes**: `90` (`34` mesh nodes across `20` unique mesh primitives: `19` architectural/track meshes + `15` instanced `Fixture_Head_*` nodes sharing `Spot_Head_Mesh`; `9` materials; `8` embedded images)
+- **Triangles / Vertices**: `8,950` triangles / `15,042` vertices (`0` degenerate faces)
+- **Canonical `model.glb` size**: `6,006,072` bytes (`5.73 MiB`), SHA-256 `dbceb3df82dc1ea52a346a03e4d355402da2a54d0e14aefd472d8a59ec25d320`
+- **Estimated GPU texture memory (`10` Three.js texture bindings across `8` images, RGBA8 + mipchain)**: `43,341,138` bytes (`41.33 MiB`)
+- **Three.js `GLTFLoader` load time**: `50.5 ms` (local HTTP loopback in headless Chromium WebGL)
+- **Draw calls (`1600×1000` with `2048²` PCFSoftShadowMap)**: `58` across shadow + main pass (`34` unshadowed)
+- **Steady-state WebGL frame time (`90`-frame benchmark after warmup, `gl.finish()`)**: `0.117 ms` average, `0.200 ms` p95 (measured on Apple Silicon Metal/ANGLE headless Chromium; physical mobile device hardware was not tested)
+- **Clean-checkout reproducibility**: Verified bit-for-bit identical `model.glb` SHA-256 (`dbceb3df82dc1ea52a346a03e4d355402da2a54d0e14aefd472d8a59ec25d320`) regenerated from an isolated `/tmp` clean copy containing only tracked package files (no `.work/`), and verified relative `//textures/` paths in `model.blend`.
 
 ### 8.3 Tracked Package Files vs. Consumer Distribution & Known Limitations
 
-- **Tracked authoring & catalog files (`15` files, `8,772,140` bytes total)**:
-  - `model.glb` (`4,560,896` bytes — **sole required consumer runtime file**, 100% self-contained)
-  - `preview.webp` (`23,998` bytes — optional catalog preview)
-  - `manifest.json` (`7,139` bytes — optional catalog metadata)
-  - `model.blend` (`188,071` bytes — editable Blender 5.2 source)
-  - `generate.py` (`99,348` bytes — deterministic Blender Python generator)
-  - `textures/*.png` (`7` files, `3,830,281` bytes total — authoritative lossless PBR maps)
-  - `validate_blender.py` (`9,560` bytes), `validate_threejs.mjs` (`26,995` bytes), `notes.md` (`~25.8 KB`)
-- **Required authoring/validation dependencies**: Blender `5.2.2 LTS` (`bpy`, `bmesh`, bundled `numpy`); Node.js `>= 20` with `three` and `playwright` (`NODE_PATH`) for `validate_threejs.mjs`; optional `cwebp` for regenerating `preview.webp`.
+- **Tracked authoring & catalog files (`17` files)**:
+  - `model.glb` (`6,006,072` bytes — **sole required consumer runtime file**, 100% self-contained)
+  - `museum_lighting.mjs` (`9,394` bytes — optional Three.js daylight/evening & portal/spotlight helper)
+  - `preview.webp` (`32,830` bytes — optional catalog preview)
+  - `manifest.json` (`~9.1 KB` — optional catalog metadata)
+  - `model.blend` (`243,461` bytes — editable Blender 5.2 source)
+  - `generate.py` (`113,272` bytes — deterministic Blender Python generator)
+  - `textures/*.png` (`8` files, `4,799,196` bytes total — authoritative lossless PBR & neutral AO maps)
+  - `validate_blender.py` (`9,597` bytes), `validate_threejs.mjs` (`27,723` bytes), `notes.md`
 - **Known limitations**:
-  1. `model.glb` provides architectural geometry, PBR materials, semantic mounting/lighting/navigation anchors, and embedded walkable-bound metadata; camera navigation controllers, player collision clamping, runtime light management, and interactive exhibition UI must be supplied by the consumer (**FrilCraft** / **FrilStudio**).
-  2. `Mat_Skylight_Glass` uses standard glTF `BLEND` transparency (`opacity = 0.14`) for lightweight real-time WebGL compatibility; set `Skylight_Glass.castShadow = false` in Three.js so directional sunlight casts unobstructed coffer shadows.
-  3. Physical mobile device GPU frame times were not measured; mobile checks covered `9:16` (`540×960`) portrait viewport rendering and GPU texture memory budgeting (`21.33 MiB`).
+  1. `model.glb` provides architectural geometry, PBR + neutral AO materials, semantic anchors, and walkable-bound metadata; camera navigation, collision clamping, and interactive exhibition UI are supplied by the consumer (**FrilCraft** / **FrilStudio**).
+  2. Generic glTF viewers that use a single directional headlight with zero hemisphere/IBL environment will still benefit from the embedded `museum_ao.png` `occlusionTexture`, while full museum daylight quality in Three.js is achieved via `museum_lighting.mjs` (or an overcast HDRI + directional sun with `Skylight_Glass.castShadow = false`).
+  3. Physical mobile device GPU frame times were not measured; mobile checks covered `9:16` (`540×960`) portrait rendering and VRAM budgeting (`41.33 MiB`).

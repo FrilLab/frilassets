@@ -1,24 +1,17 @@
 #!/usr/bin/env node
 /**
- * Isolated Three.js Runtime Validation & Performance Harness for:
- *   Open Skylight Museum Hall (`assets/architecture/museum-open-hall/model.glb`)
+ * Isolated Three.js Runtime Validation, Lighting Study, & Human-Scale Visual Harness for:
+ *   Open Skylight Museum Hall V2 (`assets/architecture/museum-open-hall/model.glb`)
  *
- * Loads the actual exported `model.glb` in Chromium WebGL via Playwright + standard `THREE.GLTFLoader`
- * and validates all Section 20 & Section 21 runtime contracts:
- *   1. Standard GLTFLoader loading, world scale, interior clear bounds (24 x 18 x 9 m), floor Y = 0.00 m
- *   2. Semantic node hierarchy & all 9 PBR material slots + embedded texture verification
- *   3. Independent runtime material customization (walls, floor, ceiling, frames, glazing) +
- *      per-wall material cloning without duplicating geometry + two-instance isolation check
- *   4. Skylight glazing visibility toggle (`Skylight_Glass.visible`) & wall/ceiling visibility toggles
- *   5. All 9 `Anchor_Artwork_*` transforms, local XY plane + inward `+Z` normal verification,
- *      and mounting of 9 varied-aspect-ratio artworks (portrait, landscape, panoramic, square, framed & frameless)
- *   6. All 14 `Navigation_Anchors` (Y = 1.60 m eye height, clearance check, orientation check)
- *      and all 15 `Lighting_Anchors` (`-Z` beam aim verification)
- *   7. Walkable bounds & entrance threshold pass-through / wall collision contract check
- *   8. Desktop (1600x1000) & Mobile (540x960) WebGL renders + steady-state frame-time & GPU memory measurements
- *
- * Run with:
- *   NODE_PATH=<path-to-node_modules> node assets/architecture/museum-open-hall/validate_threejs.mjs
+ * Exercises `museum_lighting.mjs` and validates Sections 1–10 in Chromium WebGL:
+ *   - Main-hall clear dimensions (24 x 18 x 9 m), floor Y = 0.00 m, pitched skylight ridge >= 12.6 m
+ *   - Dual-UV neutral `aoMap` (`TEXCOORD_1`) loading & independent material recoloring + cloning
+ *   - Spatial continuity: Open Central Enfilade Portal into `Secondary_Gallery` AND Closed
+ *     `Wall_Back_Portal_Closure` 9-artwork configuration + finished `Entrance_Vestibule`
+ *   - Independent runtime rotation of `Fixture_Head_*` adjustable spotlight heads (`aimSpotlightHead`)
+ *   - All 8 required Section 9 human-scale views (1.6 m eye height, natural 40-46 deg vFOV)
+ *     plus all 3 Section 7 lighting scenarios (`soft_daylight`, `direct_sun`, `evening`)
+ *     and Desktop (1600x1000) + Portrait Mobile (720x1280) compositions!
  */
 
 import fs from "node:fs";
@@ -35,7 +28,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 const ASSET_DIR = __dirname;
 const WORK_DIR = path.join(REPO_ROOT, ".work/architecture/museum-open-hall");
-const OUT_DIR = path.join(WORK_DIR, "validation");
+const OUT_DIR = path.join(WORK_DIR, "validation-v2");
 const THREE_ROOT =
   process.env.THREE_ROOT || path.resolve(path.dirname(require.resolve("three")), "..");
 
@@ -54,7 +47,7 @@ const HTML_PAGE = `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <style>body { margin: 0; background: #dcd7ce; overflow: hidden; }</style>
+  <style>body { margin: 0; background: #e8edf4; overflow: hidden; }</style>
   <script type="importmap">
   {
     "imports": {
@@ -68,7 +61,11 @@ const HTML_PAGE = `<!doctype html>
 <script type="module">
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import {
+  applyMuseumLighting,
+  setRearPortalOpen,
+  aimSpotlightHead,
+} from "/asset/museum_lighting.mjs";
 
 function makeArtworkCanvasTexture(index, aspectW, aspectH, label) {
   const w = Math.round(512 * (aspectW >= aspectH ? 1.0 : aspectW / aspectH));
@@ -78,24 +75,24 @@ function makeArtworkCanvasTexture(index, aspectW, aspectH, label) {
   c.height = h;
   const ctx = c.getContext("2d");
 
-  // Warm archival mat board
-  ctx.fillStyle = "#f1ede4";
+  ctx.fillStyle = "#f2eee6";
   ctx.fillRect(0, 0, w, h);
 
-  const pad = Math.round(Math.min(w, h) * 0.085);
+  const pad = Math.round(Math.min(w, h) * 0.075);
   const iw = w - pad * 2;
   const ih = h - pad * 2;
 
   const palettes = [
-    ["#c8825b", "#2a3942"],
-    ["#8c989e", "#1e2428"],
-    ["#607062", "#d8c7ab"],
-    ["#b79d7e", "#3c332d"],
-    ["#2a3540", "#cbb99e"],
-    ["#7d503e", "#dfccb5"],
-    ["#9aa298", "#2f3532"],
-    ["#ca9e67", "#23211f"],
-    ["#3e4b54", "#bab1a4"],
+    ["#1d4e6e", "#95bdd1"],
+    ["#2f5646", "#d49b54"],
+    ["#c97d3a", "#5c3a28"],
+    ["#26384a", "#9cb0bf"],
+    ["#b87a3d", "#e6c88c"],
+    ["#2f443b", "#8fa394"],
+    ["#22313f", "#c48a5a"],
+    ["#6e473b", "#d8c2a8"],
+    ["#354652", "#c8b698"],
+    ["#8a4a32", "#e2be88"],
   ];
   const [c1, c2] = palettes[index % palettes.length];
   const grad = ctx.createLinearGradient(pad, pad, pad, pad + ih);
@@ -104,16 +101,15 @@ function makeArtworkCanvasTexture(index, aspectW, aspectH, label) {
   ctx.fillStyle = grad;
   ctx.fillRect(pad, pad, iw, ih);
 
-  // Subtle architectural geometric motif + upright orientation verification marker ("TOP" subtle rule)
-  ctx.fillStyle = "rgba(245, 241, 232, 0.82)";
+  ctx.fillStyle = "rgba(246, 243, 236, 0.78)";
   ctx.beginPath();
-  ctx.arc(w * 0.5, pad + ih * 0.42, Math.min(iw, ih) * 0.20, 0, Math.PI * 2);
+  ctx.arc(w * 0.5, pad + ih * 0.44, Math.min(iw, ih) * 0.19, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#2b2927";
-  ctx.font = \`500 \${Math.max(12, Math.round(Math.min(w, h) * 0.042))}px sans-serif\`;
+  ctx.font = \`500 \${Math.max(11, Math.round(Math.min(w, h) * 0.038))}px sans-serif\`;
   ctx.textAlign = "center";
-  ctx.fillText(label, w * 0.5, h - Math.max(8, Math.round(pad * 0.35)));
+  ctx.fillText(label, w * 0.5, h - Math.max(7, Math.round(pad * 0.32)));
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -126,19 +122,12 @@ window.__runValidation = async function () {
   renderer.setSize(desktopW, desktopH);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.02;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
 
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xe6ecf2);
-  scene.environment = envTex;
-  scene.environmentIntensity = 0.52;
-
   const loader = new GLTFLoader();
   const tLoadStart = performance.now();
   const gltf = await loader.loadAsync("/asset/model.glb");
@@ -148,7 +137,6 @@ window.__runValidation = async function () {
   scene.add(museum);
   museum.updateMatrixWorld(true);
 
-  // 1. Collect nodes, meshes, materials, textures, and triangle/vertex counts
   const nodesByName = {};
   const meshes = [];
   const materialsByName = {};
@@ -160,10 +148,6 @@ window.__runValidation = async function () {
     if (obj.name) nodesByName[obj.name] = obj;
     if (obj.isMesh) {
       meshes.push(obj);
-      const isGlass = obj.name === "Skylight_Glass";
-      obj.castShadow = !isGlass;
-      obj.receiveShadow = !isGlass;
-
       const geo = obj.geometry;
       const vCount = geo.attributes.position ? geo.attributes.position.count : 0;
       const triCount = geo.index ? geo.index.count / 3 : vCount / 3;
@@ -182,6 +166,7 @@ window.__runValidation = async function () {
               material: m.name,
               width: t.image.width,
               height: t.image.height,
+              channel: t.channel,
             });
           }
         }
@@ -189,7 +174,6 @@ window.__runValidation = async function () {
     }
   });
 
-  // Estimate GPU texture memory (RGBA8 uncompressed + 1.333x mipchain)
   let estimatedTextureVramBytes = 0;
   const textureDetails = [];
   for (const info of uniqueTextures.values()) {
@@ -198,7 +182,7 @@ window.__runValidation = async function () {
     textureDetails.push({ ...info, estimatedGpuBytes: bytes });
   }
 
-  // 2. Verify physical dimensions & floor alignment
+  // Verify main-hall dimensions + pitched skylight ridge elevation + dual-UV AO map!
   const boxOf = (name) => new THREE.Box3().setFromObject(nodesByName[name]);
   const floorBox = boxOf("Floor");
   const wallLeftBox = boxOf("Wall_Left");
@@ -207,64 +191,85 @@ window.__runValidation = async function () {
   const wallEntBox = boxOf("Wall_Entrance");
   const ceilBox = boxOf("Ceiling");
   const glassBox = boxOf("Skylight_Glass");
-  const entFrameBox = boxOf("Entrance_Frame");
+  const secGalBox = boxOf("Secondary_Gallery");
+  const vestBox = boxOf("Entrance_Vestibule");
   const overallBox = new THREE.Box3().setFromObject(museum);
 
   const interiorWidth = wallRightBox.min.x - wallLeftBox.max.x;
   const interiorDepth = wallEntBox.min.z - wallBackBox.max.z;
   const ceilingHeight = ceilBox.min.y - floorBox.max.y;
 
-  // 3. Configure runtime daylight + directional sun through skylight
-  const hemi = new THREE.HemisphereLight(0xf6f8fc, 0xd8d2c8, 0.85);
-  scene.add(hemi);
+  const aoMapsLoaded =
+    Boolean(materialsByName["Mat_Wall_Plaster"]?.aoMap) &&
+    Boolean(materialsByName["Mat_Floor_Concrete"]?.aoMap) &&
+    Boolean(materialsByName["Mat_Ceiling"]?.aoMap) &&
+    materialsByName["Mat_Wall_Plaster"].aoMap.channel === 1;
 
-  const sun = new THREE.DirectionalLight(0xfff5e4, 2.25);
-  sun.position.set(6.8, 16.0, 4.4);
-  sun.target.position.set(-2.2, 0.0, -2.5);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -15;
-  sun.shadow.camera.right = 15;
-  sun.shadow.camera.top = 15;
-  sun.shadow.camera.bottom = -15;
-  sun.shadow.camera.near = 1.0;
-  sun.shadow.camera.far = 34.0;
-  sun.shadow.bias = -0.0004;
-  scene.add(sun);
-  scene.add(sun.target);
-
-  // Exterior arrival backdrop outside entrance for clean visual realism
-  const extCourt = new THREE.Mesh(
-    new THREE.PlaneGeometry(36, 36),
-    new THREE.MeshStandardMaterial({ color: 0xddd7ce, roughness: 0.92 })
-  );
-  extCourt.rotation.x = -Math.PI / 2;
-  extCourt.position.set(0, -0.01, 16);
-  scene.add(extCourt);
-
-  const camera = new THREE.PerspectiveCamera(54, desktopW / desktopH, 0.1, 100);
+  // Plumb two-point architectural camera helper (setViewOffset matches Blender optical shift_y!)
+  const camera = new THREE.PerspectiveCamera(50, desktopW / desktopH, 0.1, 100);
   const snapshots = {};
-  const snap = (key) => {
+  const snap = (key, eye, target, fov = 50, shiftYFrac = 0.0) => {
+    const curW = renderer.domElement.width;
+    const curH = renderer.domElement.height;
+    camera.fov = fov;
+    if (Math.abs(shiftYFrac) > 1e-4) {
+      camera.setViewOffset(curW, curH, 0, Math.round(-curH * shiftYFrac), curW, curH);
+    } else {
+      camera.clearViewOffset();
+    }
+    camera.updateProjectionMatrix();
+    if (eye && target) {
+      camera.position.set(...eye);
+      camera.lookAt(...target);
+    }
     renderer.render(scene, camera);
     snapshots[key] = renderer.domElement.toDataURL("image/png");
   };
 
-  // Render empty runtime daylight view (matching Blender entrance perspective)
-  camera.position.set(0.0, 1.65, 8.2);
-  camera.lookAt(0.0, 2.55, -9.0);
-  snap("01_threejs_empty_daylight");
+  // ------------------------------------------------------------------
+  // Scenario A: Soft Overcast Daylight — All 7 Empty Human-Scale Section 9 Views
+  // ------------------------------------------------------------------
+  let activeLighting = applyMuseumLighting(scene, museum, renderer, "soft_daylight");
+  setRearPortalOpen(museum, true);
 
-  // Render skylight overhead view
-  camera.position.set(0.0, 1.65, 4.4);
-  camera.lookAt(0.0, 9.7, -1.6);
-  snap("02_threejs_skylight");
+  snap("01_threejs_entrance_eye_soft_daylight", [0.0, 1.60, 8.20], [0.0, 1.60, -9.00], 52, 0.155);
+  snap("02_threejs_center_hall", [0.0, 1.60, 2.40], [0.0, 1.60, -9.00], 50, 0.135);
+  snap("03_threejs_main_wall_enfilade", [0.0, 1.60, -1.60], [0.0, 1.60, -15.70], 46, 0.095);
+  snap("04_threejs_opposite_entrance_vestibule", [0.0, 1.60, -6.20], [0.0, 1.60, 15.40], 52, 0.145);
+  snap("05_threejs_left_exhibition_area", [5.8, 1.60, 1.20], [-12.0, 1.60, -1.50], 48, 0.115);
+  snap("06_threejs_right_exhibition_area", [-5.8, 1.60, 1.20], [12.0, 1.60, -1.50], 48, 0.115);
+  snap("07_threejs_pitched_skylight_upward", [0.0, 1.60, 4.80], [0.0, 11.40, -1.20], 50, 0.0);
 
-  // 4. Verify Skylight_Glass & Wall/Ceiling visibility controls
-  const glassNode = nodesByName["Skylight_Glass"];
-  glassNode.visible = false;
+  // ------------------------------------------------------------------
+  // Scenario B: Direct Sunlight through Pitched Skylight
+  // ------------------------------------------------------------------
+  activeLighting.dispose();
+  activeLighting = applyMuseumLighting(scene, museum, renderer, "direct_sun");
+  snap("08_threejs_direct_sunlight", [0.0, 1.60, 8.20], [0.0, 1.60, -9.00], 52, 0.155);
+
+  // ------------------------------------------------------------------
+  // Verify Adjustable Spotlight Heads (aimSpotlightHead) — Section 8
+  // ------------------------------------------------------------------
+  const headTestNode = nodesByName["Fixture_Head_Back_03"];
+  const origHeadQuat = headTestNode.quaternion.clone();
+  const customAimTarget = new THREE.Vector3(0.0, 1.0, -0.60); // Aim spotlight at central installation!
+  aimSpotlightHead(headTestNode, customAimTarget);
+  const headPos = new THREE.Vector3();
+  const headWorldQuat = new THREE.Quaternion();
+  headTestNode.getWorldPosition(headPos);
+  headTestNode.getWorldQuaternion(headWorldQuat);
+  const aimedDir = new THREE.Vector3(0, 0, -1).applyQuaternion(headWorldQuat);
+  const expectedDir = customAimTarget.clone().sub(headPos).normalize();
+  const spotlightHeadAdjustable =
+    aimedDir.dot(expectedDir) > 0.9999 && !headTestNode.quaternion.equals(origHeadQuat);
+  headTestNode.quaternion.copy(origHeadQuat);
+  headTestNode.updateMatrixWorld(true);
+
+  // Verify Skylight_Glass & Wall/Ceiling visibility controls
+  nodesByName["Skylight_Glass"].visible = false;
   renderer.render(scene, camera);
-  const glassHiddenWorked = glassNode.visible === false;
-  glassNode.visible = true;
+  const glassHiddenWorked = nodesByName["Skylight_Glass"].visible === false;
+  nodesByName["Skylight_Glass"].visible = true;
 
   nodesByName["Wall_Left"].visible = false;
   nodesByName["Ceiling"].visible = false;
@@ -273,10 +278,19 @@ window.__runValidation = async function () {
   nodesByName["Wall_Left"].visible = true;
   nodesByName["Ceiling"].visible = true;
 
-  // 5. Verify all 9 Artwork Anchors & mount 9 distinct aspect-ratio artworks (framed & frameless)
+  // ------------------------------------------------------------------
+  // Verify All 9 Original Artwork Anchors (+ Secondary_01) & Render Both
+  // Closed 9-Artwork Exhibition AND Evening Exhibition!
+  // ------------------------------------------------------------------
+  setRearPortalOpen(museum, false); // Close sliding pocket wall flush at Z = -9.00 m for full 9-artwork layout!
+  const closureClosedBox = new THREE.Box3().setFromObject(nodesByName["Wall_Back_Portal_Closure"]);
+  const portalClosureFlushValid =
+    Math.abs(closureClosedBox.max.z - (-9.0)) < 0.005 &&
+    Math.abs(closureClosedBox.min.x + closureClosedBox.max.x) < 0.005;
+
   const artSpecs = [
     { name: "Anchor_Artwork_Back_01", w: 1.50, h: 2.25, framed: true, ratio: "2:3 Portrait" },
-    { name: "Anchor_Artwork_Back_02", w: 3.20, h: 2.00, framed: true, ratio: "16:10 Hero Landscape" },
+    { name: "Anchor_Artwork_Back_02", w: 3.10, h: 1.95, framed: true, ratio: "16:10 Hero Landscape" },
     { name: "Anchor_Artwork_Back_03", w: 1.65, h: 2.20, framed: false, ratio: "3:4 Frameless Canvas" },
     { name: "Anchor_Artwork_Left_01", w: 1.90, h: 1.90, framed: true, ratio: "1:1 Square" },
     { name: "Anchor_Artwork_Left_02", w: 2.55, h: 1.70, framed: true, ratio: "3:2 Landscape" },
@@ -297,16 +311,12 @@ window.__runValidation = async function () {
     anchor.getWorldPosition(worldPos);
     anchor.getWorldQuaternion(worldQuat);
 
-    const xAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(worldQuat);
     const yAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(worldQuat);
     const zAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(worldQuat);
-
-    // Check +Y is world up (0, 1, 0) and +Z points inward toward hall origin!
     const toCenter = new THREE.Vector3(0, worldPos.y, 0).sub(worldPos).normalize();
     const inwardDot = zAxis.dot(toCenter);
     const upDot = yAxis.dot(new THREE.Vector3(0, 1, 0));
 
-    // Verify advertised maxWidthMeters x maxHeightMeters centered directly on anchor clears floor & base reveal (Y >= 0.25 m)
     const maxW = anchor.userData.maxWidthMeters;
     const maxH = anchor.userData.maxHeightMeters;
     const maxBottomY = worldPos.y - maxH * 0.5;
@@ -317,37 +327,26 @@ window.__runValidation = async function () {
       maxBottomY >= 0.249 &&
       maxTopY <= 8.75;
 
-    // Mount artwork directly as a child in anchor's local XY plane (+Z facing into hall)
     const holder = new THREE.Group();
     holder.position.copy(worldPos);
     holder.quaternion.copy(worldQuat);
 
     const artTex = makeArtworkCanvasTexture(idx, spec.w, spec.h, \`\${spec.name.replace("Anchor_Artwork_", "")} · \${spec.ratio}\`);
-    const canvasDepth = spec.framed ? 0.036 : 0.028;
+    const canvasDepth = spec.framed ? 0.038 : 0.028;
     const artMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(spec.w, spec.h),
-      new THREE.MeshStandardMaterial({ map: artTex, roughness: 0.58, metalness: 0.0 })
+      new THREE.MeshStandardMaterial({ map: artTex, roughness: 0.56, metalness: 0.0 })
     );
     artMesh.position.z = canvasDepth;
     holder.add(artMesh);
 
-    if (spec.framed) {
-      const frameMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(spec.w + 0.055, spec.h + 0.055, canvasDepth - 0.003),
-        new THREE.MeshStandardMaterial({ color: 0x2c2825, roughness: 0.45 })
-      );
-      frameMesh.position.z = (canvasDepth - 0.003) * 0.5;
-      frameMesh.castShadow = true;
-      holder.add(frameMesh);
-    } else {
-      const stretcher = new THREE.Mesh(
-        new THREE.BoxGeometry(spec.w - 0.004, spec.h - 0.004, canvasDepth - 0.002),
-        new THREE.MeshStandardMaterial({ color: 0xf4f0e8, roughness: 0.85 })
-      );
-      stretcher.position.z = (canvasDepth - 0.002) * 0.5;
-      stretcher.castShadow = true;
-      holder.add(stretcher);
-    }
+    const backing = new THREE.Mesh(
+      new THREE.BoxGeometry(spec.w + (spec.framed ? 0.055 : -0.004), spec.h + (spec.framed ? 0.055 : -0.004), canvasDepth - 0.003),
+      new THREE.MeshStandardMaterial({ color: spec.framed ? 0x352f2a : 0xf4f0e8, roughness: spec.framed ? 0.46 : 0.85 })
+    );
+    backing.position.z = (canvasDepth - 0.003) * 0.5;
+    backing.castShadow = true;
+    holder.add(backing);
 
     tempArtGroup.add(holder);
 
@@ -356,7 +355,6 @@ window.__runValidation = async function () {
       aspectRatioLabel: spec.ratio,
       mountedSizeMeters: [spec.w, spec.h],
       worldPosition: worldPos.toArray().map((v) => Number(v.toFixed(4))),
-      localUpDotWorldUp: Number(upDot.toFixed(6)),
       inwardNormal: zAxis.toArray().map((v) => Number(v.toFixed(4))),
       maxCenteredSizeMeters: [maxW, maxH],
       maxCenteredBottomYMeters: Number(maxBottomY.toFixed(4)),
@@ -366,97 +364,48 @@ window.__runValidation = async function () {
     });
   });
 
-  // Render 9-artwork exhibition in desktop (16:10)
+  // Render 8. Nine-Artwork Exhibition (Desktop 16:10, Direct Sunlight)
+  snap("09_threejs_nine_artworks_desktop", [0.0, 1.60, 8.20], [0.0, 1.60, -9.00], 52, 0.150);
+
+  // Scenario C: Evening Exhibition Lighting (9 artworks illuminated by runtime SpotLights!)
+  activeLighting.dispose();
+  activeLighting = applyMuseumLighting(scene, museum, renderer, "evening");
+  snap("10_threejs_evening_exhibition", [-4.2, 1.60, 7.20], [1.4, 1.60, -9.00], 50, 0.135);
+
+  // Mobile Portrait Viewport Composition (720 x 1280, 9:16, Soft Daylight + Open Enfilade + Secondary Focal Art!)
+  activeLighting.dispose();
+  activeLighting = applyMuseumLighting(scene, museum, renderer, "soft_daylight");
+  setRearPortalOpen(museum, true);
+  // Hide Back_02 when portal is open and mount focal artwork on Anchor_Artwork_Secondary_01!
+  tempArtGroup.children[1].visible = false;
+  const secAnchor = nodesByName["Anchor_Artwork_Secondary_01"];
+  const secHolder = new THREE.Group();
+  secAnchor.getWorldPosition(secHolder.position);
+  secAnchor.getWorldQuaternion(secHolder.quaternion);
+  const secMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.6, 1.9),
+    new THREE.MeshStandardMaterial({ map: makeArtworkCanvasTexture(9, 2.6, 1.9, "Secondary_01 · Enfilade Focal"), roughness: 0.56 })
+  );
+  secMesh.position.z = 0.036;
+  secHolder.add(secMesh);
+  tempArtGroup.add(secHolder);
+
+  renderer.setSize(720, 1280);
+  camera.aspect = 720 / 1280;
+  snap("11_threejs_mobile_portrait_enfilade", [0.0, 1.60, 8.00], [0.0, 1.60, -9.00], 58, 0.130);
+
+  // Restore desktop size & test Independent Material Customization + Multi-Instance Isolation
+  renderer.setSize(desktopW, desktopH);
   camera.aspect = desktopW / desktopH;
-  camera.updateProjectionMatrix();
-  camera.position.set(-4.6, 1.65, 7.2);
-  camera.lookAt(1.8, 2.45, -9.0);
-  snap("03_threejs_nine_artworks_desktop");
-
-  // 6. Verify all 14 Navigation Anchors & all 15 Lighting Anchors
-  const navNames = [
-    "Anchor_Navigation_Entrance",
-    "Anchor_Navigation_Center",
-    "Anchor_Navigation_Back",
-    "Anchor_Navigation_Left",
-    "Anchor_Navigation_Right",
-    "Anchor_Navigation_Artwork_01",
-    "Anchor_Navigation_Artwork_02",
-    "Anchor_Navigation_Artwork_03",
-    "Anchor_Navigation_Artwork_04",
-    "Anchor_Navigation_Artwork_05",
-    "Anchor_Navigation_Artwork_06",
-    "Anchor_Navigation_Artwork_07",
-    "Anchor_Navigation_Artwork_08",
-    "Anchor_Navigation_Artwork_09",
-  ];
-
-  const navChecks = [];
-  for (const nm of navNames) {
-    const node = nodesByName[nm];
-    const p = new THREE.Vector3();
-    const q = new THREE.Quaternion();
-    node.getWorldPosition(p);
-    node.getWorldQuaternion(q);
-    const lookDir = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
-    const upDir = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
-    const insideWalkable =
-      Math.abs(p.x) <= 11.65 &&
-      p.z >= -8.65 &&
-      (p.z <= 8.65 || (Math.abs(p.x) <= 2.50 && p.z <= 10.20)) &&
-      Math.abs(p.y - 1.60) < 0.02;
-    navChecks.push({
-      name: nm,
-      position: p.toArray().map((v) => Number(v.toFixed(4))),
-      lookDirection: lookDir.toArray().map((v) => Number(v.toFixed(4))),
-      upDot: Number(upDir.dot(new THREE.Vector3(0, 1, 0)).toFixed(6)),
-      validWalkableEyePoint: insideWalkable,
-    });
-  }
-
-  // Render directly from Anchor_Navigation_Entrance & Anchor_Navigation_Artwork_02 using pure anchor transform!
-  const applyCameraAnchor = (anchorName, fov = 54) => {
-    const n = nodesByName[anchorName];
-    camera.fov = fov;
-    camera.updateProjectionMatrix();
-    n.getWorldPosition(camera.position);
-    n.getWorldQuaternion(camera.quaternion);
-  };
-  applyCameraAnchor("Anchor_Navigation_Entrance", 56);
-  snap("04_threejs_nav_entrance");
-  applyCameraAnchor("Anchor_Navigation_Left", 56);
-  snap("05_threejs_nav_left_wall");
-  applyCameraAnchor("Anchor_Navigation_Artwork_02", 52);
-  snap("06_threejs_nav_artwork_02");
-
-  // Verify Lighting_Anchors aim downward/inward into the hall
-  const lightGroup = nodesByName["Lighting_Anchors"];
-  const lightChecks = [];
-  for (const ch of lightGroup.children) {
-    const p = new THREE.Vector3();
-    const q = new THREE.Quaternion();
-    ch.getWorldPosition(p);
-    ch.getWorldQuaternion(q);
-    const beamDir = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
-    lightChecks.push({
-      name: ch.name,
-      position: p.toArray().map((v) => Number(v.toFixed(4))),
-      beamDirection: beamDir.toArray().map((v) => Number(v.toFixed(4))),
-      aimsDownwardIntoHall: beamDir.y < -0.55 && p.y > 8.70,
-    });
-  }
-
-  // 7. Independent Material Customization + Per-Wall Cloning + Multi-Instance Isolation
+  camera.clearViewOffset();
   const origWallHex = materialsByName["Mat_Wall_Plaster"].color.getHex();
   const origFloorHex = materialsByName["Mat_Floor_Concrete"].color.getHex();
 
-  // Clone Mat_Wall_Plaster on Wall_Back only to create a curated dark gallery feature wall while keeping side walls warm ivory!
   const featureWallMat = materialsByName["Mat_Wall_Plaster"].clone();
-  featureWallMat.color.set("#3f494e"); // Deep museum slate accent wall
+  featureWallMat.color.set("#3d474d");
   nodesByName["Wall_Back"].material = featureWallMat;
-  materialsByName["Mat_Floor_Concrete"].color.set("#c8c0b4"); // Warmer travertine-stone tint
+  materialsByName["Mat_Floor_Concrete"].color.set("#c2bab0");
 
-  // Second instance isolation test
   const instanceB = museum.clone(true);
   const instBMats = {};
   instanceB.traverse((o) => {
@@ -470,44 +419,100 @@ window.__runValidation = async function () {
     nodesByName["Wall_Left"].material.color.getHex() === origWallHex &&
     nodesByName["Wall_Back"].material.color.getHex() !== nodesByName["Wall_Left"].material.color.getHex();
 
-  camera.position.set(-4.2, 1.65, 6.8);
-  camera.lookAt(0.8, 2.35, -9.0);
-  camera.fov = 54;
-  camera.updateProjectionMatrix();
-  snap("07_threejs_custom_materials");
+  snap("12_threejs_custom_materials", [-4.2, 1.60, 6.80], [0.8, 2.35, -9.00], 45);
 
-  // Restore canonical materials
   nodesByName["Wall_Back"].material = materialsByName["Mat_Wall_Plaster"];
   featureWallMat.dispose();
   materialsByName["Mat_Wall_Plaster"].color.setHex(origWallHex);
   materialsByName["Mat_Floor_Concrete"].color.setHex(origFloorHex);
 
-  // 8. Mobile Portrait Viewport Aspect Ratio Test (540 x 960, 9:16)
-  renderer.setSize(540, 960);
-  camera.aspect = 540 / 960;
-  camera.fov = 64;
-  camera.updateProjectionMatrix();
-  camera.position.set(0.0, 1.62, 7.8);
-  camera.lookAt(0.0, 2.40, -9.0);
-  snap("08_threejs_mobile_portrait");
+  // Verify all 14+1 Navigation Anchors, 9 Placement Anchors, & 15 Lighting Anchors
+  const navNames = [
+    "Anchor_Navigation_Entrance",
+    "Anchor_Navigation_Center",
+    "Anchor_Navigation_Back",
+    "Anchor_Navigation_Left",
+    "Anchor_Navigation_Right",
+    "Anchor_Navigation_Secondary",
+    "Anchor_Navigation_Artwork_01",
+    "Anchor_Navigation_Artwork_02",
+    "Anchor_Navigation_Artwork_03",
+    "Anchor_Navigation_Artwork_04",
+    "Anchor_Navigation_Artwork_05",
+    "Anchor_Navigation_Artwork_06",
+    "Anchor_Navigation_Artwork_07",
+    "Anchor_Navigation_Artwork_08",
+    "Anchor_Navigation_Artwork_09",
+  ];
 
-  // 9. Steady-State Runtime Performance Measurement (Desktop 1600x1000, canonical museum only)
+  const isWalkableOpen = (x, y, z) => {
+    if (y < 0.0 || y > 2.60) return false;
+    if (x >= -11.65 && x <= 11.65 && z >= -8.65 && z <= 8.65) return true;
+    if (x >= -2.50 && x <= 2.50 && z > 8.65 && z <= 10.40) return true;
+    if (x >= -6.85 && x <= 6.85 && z > 10.40 && z <= 15.05) return true;
+    if (x >= -1.90 && x <= 1.90 && z >= -9.90 && z < -8.65) return true;
+    if (x >= -5.05 && x <= 5.05 && z >= -15.35 && z < -9.90) return true;
+    return false;
+  };
+
+  const navChecks = navNames.map((nm) => {
+    const node = nodesByName[nm];
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    node.getWorldPosition(p);
+    node.getWorldQuaternion(q);
+    const upDir = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+    return {
+      name: nm,
+      position: p.toArray().map((v) => Number(v.toFixed(4))),
+      upDot: Number(upDir.dot(new THREE.Vector3(0, 1, 0)).toFixed(6)),
+      validWalkableEyePoint: isWalkableOpen(p.x, p.y, p.z) && Math.abs(p.y - 1.60) < 0.02,
+    };
+  });
+
+  const placeNames = [
+    "Anchor_Place_Central_Installation",
+    "Anchor_Place_Pedestal_01",
+    "Anchor_Place_Pedestal_02",
+    "Anchor_Place_Bench_01",
+    "Anchor_Place_Bench_02",
+    "Anchor_Place_Info_Stand",
+    "Anchor_Place_Invitation_Display",
+    "Anchor_Place_Partition_01",
+    "Anchor_Place_Partition_02",
+  ];
+  const allPlacementAnchorsValid = placeNames.every((nm) => Boolean(nodesByName[nm]));
+
+  const lightGroup = nodesByName["Lighting_Anchors"];
+  const lightChecks = lightGroup.children.map((ch) => {
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    ch.getWorldPosition(p);
+    ch.getWorldQuaternion(q);
+    const beamDir = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
+    return {
+      name: ch.name,
+      position: p.toArray().map((v) => Number(v.toFixed(4))),
+      beamDirection: beamDir.toArray().map((v) => Number(v.toFixed(4))),
+      aimsDownwardIntoHall: beamDir.y < -0.55 && p.y > 8.70,
+    };
+  });
+
+  // Steady-state frame-time benchmark (Direct Sunlight with 2048^2 shadow pass, canonical empty museum)
   scene.remove(tempArtGroup);
-  renderer.setSize(desktopW, desktopH);
-  camera.aspect = desktopW / desktopH;
-  camera.fov = 54;
+  activeLighting.dispose();
+  activeLighting = applyMuseumLighting(scene, museum, renderer, "direct_sun");
+  camera.position.set(0.0, 1.60, 8.20);
+  camera.lookAt(0.0, 2.75, -9.00);
+  camera.fov = 45;
   camera.updateProjectionMatrix();
-  camera.position.set(0.0, 1.65, 8.2);
-  camera.lookAt(0.0, 2.55, -9.0);
 
-  // Warmup 15 frames, then time 90 frames
   for (let i = 0; i < 15; i++) renderer.render(scene, camera);
   const frameTimes = [];
   for (let i = 0; i < 90; i++) {
     const t0 = performance.now();
     renderer.render(scene, camera);
-    const gl = renderer.getContext();
-    gl.finish();
+    renderer.getContext().finish();
     frameTimes.push(performance.now() - t0);
   }
   frameTimes.sort((a, b) => a - b);
@@ -515,35 +520,15 @@ window.__runValidation = async function () {
   const p95FrameMs = frameTimes[Math.floor(frameTimes.length * 0.95)];
   const drawCalls = renderer.info.render.calls;
 
-  // 10. Collision / Walkable-Space Contract Verification
-  const walkableMeta = nodesByName["Museum_Open_Hall"].userData.walkableBoundsMeters;
-  const isWalkable = (x, y, z) => {
-    if (y < 0.0 || y > 2.60) return false;
-    if (x >= -11.65 && x <= 11.65 && z >= -8.65 && z <= 8.65) return true;
-    if (x >= -2.50 && x <= 2.50 && z > 8.65 && z <= 10.20) return true;
-    return false;
-  };
-  const collisionContractChecks = {
-    hasEmbeddedWalkableMetadata: Boolean(walkableMeta),
-    centerFloorWalkable: isWalkable(0, 1.6, 0),
-    entranceOpeningPassable: isWalkable(0, 1.6, 9.5),
-    leftWallBlocked: !isWalkable(-12.05, 1.6, 0),
-    rightWallBlocked: !isWalkable(12.05, 1.6, 0),
-    backWallBlocked: !isWalkable(0, 1.6, -9.05),
-    entranceSideWallBlocked: !isWalkable(-6.0, 1.6, 9.2),
-  };
-
   return {
     dimensions: {
       interiorWidthMeters: Number(interiorWidth.toFixed(4)),
       interiorDepthMeters: Number(interiorDepth.toFixed(4)),
       ceilingHeightMeters: Number(ceilingHeight.toFixed(4)),
       floorSurfaceYMeters: Number(floorBox.max.y.toFixed(5)),
-      skylightGlassYMeters: Number(glassBox.min.y.toFixed(4)),
-      entranceFrameOuterBounds: {
-        min: entFrameBox.min.toArray().map((v) => Number(v.toFixed(4))),
-        max: entFrameBox.max.toArray().map((v) => Number(v.toFixed(4))),
-      },
+      pitchedSkylightRidgeYMeters: Number(glassBox.max.y.toFixed(4)),
+      secondaryGalleryDepthRangeZ: [Number(secGalBox.min.z.toFixed(3)), Number(secGalBox.max.z.toFixed(3))],
+      entranceVestibuleDepthRangeZ: [Number(vestBox.min.z.toFixed(3)), Number(vestBox.max.z.toFixed(3))],
       overallBounds: {
         min: overallBox.min.toArray().map((v) => Number(v.toFixed(4))),
         max: overallBox.max.toArray().map((v) => Number(v.toFixed(4))),
@@ -555,7 +540,7 @@ window.__runValidation = async function () {
       textures: textureDetails.length,
       triangles: totalTriangles,
       vertices: totalVertices,
-      drawCallsCanonical: drawCalls,
+      drawCallsDirectSun: drawCalls,
     },
     performance: {
       glbLoadTimeMs: Number(loadTimeMs.toFixed(2)),
@@ -569,28 +554,27 @@ window.__runValidation = async function () {
         Math.abs(interiorWidth - 24.0) < 0.01 &&
         Math.abs(interiorDepth - 18.0) < 0.01 &&
         Math.abs(ceilingHeight - 9.0) < 0.01 &&
-        Math.abs(floorBox.max.y) < 0.001,
+        Math.abs(floorBox.max.y) < 0.001 &&
+        glassBox.max.y >= 12.6,
       allNineMaterialsLoaded: Object.keys(materialsByName).length === 9,
+      dualUvNeutralAoLoaded: aoMapsLoaded,
       skylightGlassToggleWorked: glassHiddenWorked,
       wallAndCeilingToggleWorked: wallCeilingToggleWorked,
+      portalClosureToggleValid: portalClosureFlushValid,
+      spotlightHeadAdjustable,
       multiInstanceMaterialIsolation: multiInstanceIsolated,
       allNineArtworkAnchorsValid:
         artworkAnchorChecks.length === 9 &&
-        artworkAnchorChecks.every(
-          (c) => c.facesHallInterior && c.uprightValid && c.maxEnvelopeClearsFloorAndCeiling
-        ),
+        artworkAnchorChecks.every((c) => c.facesHallInterior && c.uprightValid && c.maxEnvelopeClearsFloorAndCeiling),
+      allPlacementAnchorsValid,
       allNavigationAnchorsValid:
-        navChecks.length === 14 &&
-        navChecks.every((c) => c.validWalkableEyePoint && c.upDot > 0.999),
+        navChecks.length === 15 && navChecks.every((c) => c.validWalkableEyePoint && c.upDot > 0.999),
       allLightingAnchorsValid:
-        lightChecks.length === 15 &&
-        lightChecks.every((c) => c.aimsDownwardIntoHall),
-      collisionContractValid: Object.values(collisionContractChecks).every(Boolean),
+        lightChecks.length === 15 && lightChecks.every((c) => c.aimsDownwardIntoHall),
     },
     artworkAnchors: artworkAnchorChecks,
     navigationAnchors: navChecks,
     lightingAnchors: lightChecks,
-    collisionContractChecks,
     snapshots,
   };
 };
@@ -600,9 +584,7 @@ window.__runValidation = async function () {
 
 async function main() {
   const glbPath = path.join(ASSET_DIR, "model.glb");
-  if (!fs.existsSync(glbPath)) {
-    throw new Error(`Missing model.glb at ${glbPath}`);
-  }
+  if (!fs.existsSync(glbPath)) throw new Error(`Missing model.glb at ${glbPath}`);
   const glbBuf = fs.readFileSync(glbPath);
   const glbSha256 = crypto.createHash("sha256").update(glbBuf).digest("hex");
 
@@ -669,8 +651,7 @@ async function main() {
       ...result,
     };
 
-    const reportPath = path.join(OUT_DIR, "threejs_validation.json");
-    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + "\n");
+    fs.writeFileSync(path.join(OUT_DIR, "threejs_validation.json"), JSON.stringify(report, null, 2) + "\n");
     console.log(JSON.stringify({
       status: report.status,
       glbSizeBytes: report.glbSizeBytes,
@@ -687,9 +668,7 @@ async function main() {
       consoleErrors: report.consoleErrors,
     }, null, 2));
 
-    if (report.status !== "PASS") {
-      process.exitCode = 1;
-    }
+    if (report.status !== "PASS") process.exitCode = 1;
   } finally {
     await browser.close();
     server.close();

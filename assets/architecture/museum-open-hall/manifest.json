@@ -1,7 +1,7 @@
 {
   "id": "architecture/museum-open-hall",
   "name": "Open Skylight Museum Hall",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "status": "draft",
   "assetLicense": null,
   "codeLicense": "MIT",
@@ -9,33 +9,39 @@
   "provenance": [
     {
       "type": "procedural-blender-python",
-      "tool": "Blender 5.2.2 LTS (bpy / bmesh) + Python 3 NumPy spectral PBR synthesis",
+      "tool": "Blender 5.2.2 LTS (bpy / bmesh / Cycles AO bake) + Python 3 NumPy spectral PBR synthesis",
       "script": "generate.py",
       "thirdPartyContent": false,
       "sourcingDecision": "create",
-      "sourcingNotes": "Searched local FrilAssets packages and external CC0 repositories (Poly Haven, ambientCG, Sketchfab) on 2026-11-27; see notes.md for candidate URLs, license evidence, and visual inspection rejections. All architectural geometry, semantic anchors, and coherent periodic PBR maps are 100% original and deterministically generated from generate.py."
+      "sourcingNotes": "Searched local FrilAssets packages and external CC0 repositories (Poly Haven, ambientCG, Sketchfab) on 2026-11-27 and re-verified on 2026-11-28 (including visual inspection of Poly Haven beige_wall_001 and concrete_floor_02 previews); see notes.md for candidate URLs, license evidence, and rejection rationale. All architectural geometry, pitched conservatory skylight structure, spatial continuity extensions, semantic anchors, coherent periodic PBR maps, and neutral Cycles AO atlas are 100% original and deterministically generated from generate.py."
     }
   ],
   "files": {
     "generator": "generate.py",
     "source": "model.blend",
     "glb": "model.glb",
+    "lightingHelper": "museum_lighting.mjs",
     "preview": "preview.webp",
     "notes": "notes.md",
     "validateBlender": "validate_blender.py",
     "validateThreejs": "validate_threejs.mjs",
     "textures": [
+      "textures/wall_plaster_basecolor.png",
       "textures/wall_plaster_normal.png",
       "textures/wall_plaster_roughness.png",
       "textures/floor_concrete_basecolor.png",
       "textures/floor_concrete_normal.png",
       "textures/floor_concrete_roughness.png",
-      "textures/ceiling_plaster_normal.png"
+      "textures/ceiling_plaster_normal.png",
+      "textures/museum_ao.png"
     ]
   },
   "distribution": {
     "consumerRuntimeFiles": [
       "model.glb"
+    ],
+    "optionalConsumerHelpers": [
+      "museum_lighting.mjs"
     ],
     "optionalCatalogFiles": [
       "preview.webp",
@@ -55,8 +61,8 @@
     "unit": "meters",
     "axes": {
       "X": "Hall width (-12.00 m Wall_Left to +12.00 m Wall_Right)",
-      "Y": "Vertical height (0.00 m interior finished floor to +9.00 m primary ceiling soffit; +10.35 m skylight glass)",
-      "Z": "Hall depth (-9.00 m Wall_Back main exhibition wall to +9.00 m Wall_Entrance)"
+      "Y": "Vertical height (0.00 m interior finished floor to +9.00 m floating ceiling soffit; +9.72 m side daylight coves; +10.56 m skylight eaves rising at 17.1 deg to +12.98 m central structural ridge / +13.03 m ridge cap)",
+      "Z": "Hall depth (-9.00 m Wall_Back main exhibition wall to +9.00 m Wall_Entrance; -15.70 m Secondary_Gallery focal wall; +15.40 m Entrance_Vestibule sightline wall)"
     },
     "origin": [0.0, 0.0, 0.0],
     "blenderToGltfMapping": "(X_gltf, Y_gltf, Z_gltf) = (X_blender, Z_blender, -Y_blender)"
@@ -67,27 +73,54 @@
       "depth": 18.0,
       "ceilingHeight": 9.0
     },
+    "spatialExtensions": {
+      "secondaryGalleryClear": {
+        "width": 10.8,
+        "depth": 5.8,
+        "ceilingHeight": 6.8,
+        "zRange": [-15.7, -9.9]
+      },
+      "entranceVestibuleClear": {
+        "width": 14.4,
+        "depth": 5.0,
+        "ceilingHeight": 6.6,
+        "zRange": [10.4, 15.4]
+      }
+    },
     "structuralShell": {
       "exteriorWidth": 24.8,
-      "exteriorDepthWithPortal": 19.6,
+      "exteriorDepthTotal": 31.9,
       "wallThickness": 0.4,
-      "entrancePortalDepth": 1.2,
+      "entrancePortalDepth": 1.4,
+      "rearPortalDoubleShellDepth": 0.9,
+      "sideDaylightCoveWidth": 0.64,
+      "sideDaylightCoveTopY": 9.72,
       "floorThickness": 0.32,
-      "overallHeight": 10.84
+      "overallHeight": 13.35
     },
     "openings": {
       "mainEntrance": {
         "width": 5.6,
-        "height": 4.6,
-        "frameThickness": 0.06
+        "height": 4.8,
+        "frameThickness": 0.065
+      },
+      "rearEnfiladePortal": {
+        "width": 4.4,
+        "height": 4.4,
+        "frameThickness": 0.065,
+        "closureNode": "Wall_Back_Portal_Closure",
+        "openLocalPosition": [-4.62, 0.0, -0.38],
+        "closedLocalPosition": [0.0, 0.0, 0.0]
       },
       "primarySkylight": {
-        "widthAtCeiling": 13.6,
-        "depthAtCeiling": 11.4,
-        "widthAtWellTop": 13.76,
-        "depthAtWellTop": 11.56,
-        "glazingElevationY": 10.35,
-        "bays": "4x4 (16 panes)"
+        "widthAtCeiling": 15.2,
+        "depthAtCeiling": 13.6,
+        "widthAtEave": 15.72,
+        "depthAtEave": 14.12,
+        "eaveElevationY": 10.56,
+        "ridgeElevationY": 12.98,
+        "pitchDegrees": 17.1,
+        "structure": "5 painted-steel king-post collar trusses, 7 rafter pairs + ridge beam, 21 conservatory glazing mullion bays + glazed gable ends"
       }
     }
   },
@@ -103,40 +136,48 @@
     "Mat_Trim"
   ],
   "exhibitionAnchors": [
-    { "name": "Anchor_Artwork_Back_01", "wall": "Wall_Back", "position": [-6.4, 1.55, -8.998], "inwardNormal": [0, 0, 1], "maxSizeMeters": [4.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.8 },
-    { "name": "Anchor_Artwork_Back_02", "wall": "Wall_Back", "position": [0.0, 1.55, -8.998], "inwardNormal": [0, 0, 1], "maxSizeMeters": [5.2, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.8 },
-    { "name": "Anchor_Artwork_Back_03", "wall": "Wall_Back", "position": [6.4, 1.55, -8.998], "inwardNormal": [0, 0, 1], "maxSizeMeters": [4.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.8 },
-    { "name": "Anchor_Artwork_Left_01", "wall": "Wall_Left", "position": [-11.998, 1.55, -5.2], "inwardNormal": [1, 0, 0], "maxSizeMeters": [3.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
-    { "name": "Anchor_Artwork_Left_02", "wall": "Wall_Left", "position": [-11.998, 1.55, 0.0], "inwardNormal": [1, 0, 0], "maxSizeMeters": [4.0, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
-    { "name": "Anchor_Artwork_Left_03", "wall": "Wall_Left", "position": [-11.998, 1.55, 5.2], "inwardNormal": [1, 0, 0], "maxSizeMeters": [3.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
-    { "name": "Anchor_Artwork_Right_01", "wall": "Wall_Right", "position": [11.998, 1.55, -5.2], "inwardNormal": [-1, 0, 0], "maxSizeMeters": [3.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
-    { "name": "Anchor_Artwork_Right_02", "wall": "Wall_Right", "position": [11.998, 1.55, 0.0], "inwardNormal": [-1, 0, 0], "maxSizeMeters": [4.0, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
-    { "name": "Anchor_Artwork_Right_03", "wall": "Wall_Right", "position": [11.998, 1.55, 5.2], "inwardNormal": [-1, 0, 0], "maxSizeMeters": [3.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 }
+    { "name": "Anchor_Artwork_Back_01", "wall": "Wall_Back", "position": [-6.6, 1.55, -8.997], "inwardNormal": [0, 0, 1], "maxSizeMeters": [4.6, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.8 },
+    { "name": "Anchor_Artwork_Back_02", "wall": "Wall_Back_Portal_Closure", "position": [0.0, 1.55, -8.997], "inwardNormal": [0, 0, 1], "maxSizeMeters": [4.0, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.8, "requiresClosedRearPortal": true },
+    { "name": "Anchor_Artwork_Back_03", "wall": "Wall_Back", "position": [6.6, 1.55, -8.997], "inwardNormal": [0, 0, 1], "maxSizeMeters": [4.6, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.8 },
+    { "name": "Anchor_Artwork_Left_01", "wall": "Wall_Left", "position": [-11.997, 1.55, -5.2], "inwardNormal": [1, 0, 0], "maxSizeMeters": [3.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Left_02", "wall": "Wall_Left", "position": [-11.997, 1.55, 0.0], "inwardNormal": [1, 0, 0], "maxSizeMeters": [4.0, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Left_03", "wall": "Wall_Left", "position": [-11.997, 1.55, 5.2], "inwardNormal": [1, 0, 0], "maxSizeMeters": [3.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Right_01", "wall": "Wall_Right", "position": [11.997, 1.55, -5.2], "inwardNormal": [-1, 0, 0], "maxSizeMeters": [3.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Right_02", "wall": "Wall_Right", "position": [11.997, 1.55, 0.0], "inwardNormal": [-1, 0, 0], "maxSizeMeters": [4.0, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Right_03", "wall": "Wall_Right", "position": [11.997, 1.55, 5.2], "inwardNormal": [-1, 0, 0], "maxSizeMeters": [3.8, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 5.6, "clearanceMeters": 0.7 },
+    { "name": "Anchor_Artwork_Secondary_01", "wall": "Secondary_Gallery", "position": [0.0, 1.55, -15.697], "inwardNormal": [0, 0, 1], "maxSizeMeters": [4.2, 2.6], "minBottomYMeters": 0.25, "maxShiftedHeightMeters": 4.6, "clearanceMeters": 0.8, "optionalEnfiladeFocal": true }
   ],
   "collisionContract": {
     "walkableInteriorAabb": { "min": [-11.65, 0.0, -8.65], "max": [11.65, 2.6, 8.65] },
-    "entrancePortalWalkableAabb": { "min": [-2.5, 0.0, 8.65], "max": [2.5, 2.6, 10.2] },
+    "entrancePortalWalkableAabb": { "min": [-2.5, 0.0, 8.65], "max": [2.5, 2.6, 10.4] },
+    "entranceVestibuleWalkableAabb": { "min": [-6.85, 0.0, 10.4], "max": [6.85, 2.6, 15.05] },
+    "rearPortalOpenWalkableAabb": { "min": [-1.9, 0.0, -9.9], "max": [1.9, 2.6, -8.65] },
+    "secondaryGalleryOpenWalkableAabb": { "min": [-5.05, 0.0, -15.35], "max": [5.05, 2.6, -9.9] },
     "wallColliderAabbs": [
-      { "name": "Wall_Back", "min": [-12.4, 0.0, -9.4], "max": [12.4, 2.6, -9.0] },
+      { "name": "Wall_Back_Left", "min": [-12.4, 0.0, -9.9], "max": [-2.2, 2.6, -9.0] },
+      { "name": "Wall_Back_Right", "min": [2.2, 0.0, -9.9], "max": [12.4, 2.6, -9.0] },
+      { "name": "Wall_Back_Portal_Closed", "min": [-2.2, 0.0, -9.2], "max": [2.2, 2.6, -9.0], "activeWhenRearPortalClosed": true },
       { "name": "Wall_Left", "min": [-12.4, 0.0, -9.0], "max": [-12.0, 2.6, 9.0] },
       { "name": "Wall_Right", "min": [12.0, 0.0, -9.0], "max": [12.4, 2.6, 9.0] },
-      { "name": "Wall_Entrance_Left", "min": [-12.4, 0.0, 9.0], "max": [-2.8, 2.6, 10.2] },
-      { "name": "Wall_Entrance_Right", "min": [2.8, 0.0, 9.0], "max": [12.4, 2.6, 10.2] }
+      { "name": "Wall_Entrance_Left", "min": [-12.4, 0.0, 9.0], "max": [-2.8, 2.6, 10.4] },
+      { "name": "Wall_Entrance_Right", "min": [2.8, 0.0, 9.0], "max": [12.4, 2.6, 10.4] }
     ]
   },
-  "nodeCount": 70,
-  "meshCount": 16,
+  "nodeCount": 90,
+  "meshCount": 34,
+  "uniqueMeshPrimitives": 20,
   "materialCount": 9,
-  "triangleCount": 6036,
-  "vertexCount": 10786,
-  "glbSizeBytes": 4682292,
-  "glbSha256": "517029ce989a2c41c28c78112b4bbc6b2f76d9cf37c18e18f9577f656f01063a",
+  "embeddedImageCount": 8,
+  "triangleCount": 8950,
+  "vertexCount": 15042,
+  "glbSizeBytes": 6006072,
+  "glbSha256": "dbceb3df82dc1ea52a346a03e4d355402da2a54d0e14aefd472d8a59ec25d320",
   "performance": {
-    "threejsGlbLoadTimeMs": 38.5,
-    "threejsAvgFrameTimeMs": 0.102,
+    "threejsGlbLoadTimeMs": 50.5,
+    "threejsAvgFrameTimeMs": 0.117,
     "threejsP95FrameTimeMs": 0.2,
-    "threejsDrawCallsShadowAndMainPass": 33,
-    "estimatedGpuTextureMemoryBytes": 16777214,
+    "threejsDrawCallsShadowAndMainPass": 58,
+    "estimatedGpuTextureMemoryBytes": 43341138,
     "measurementEnvironment": "Headless Chromium WebGL (Playwright, Apple Silicon Metal/ANGLE, 1600x1000 viewport, 2048x2048 PCFSoftShadowMap); physical mobile device hardware not tested."
   },
   "validation": {

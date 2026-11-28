@@ -1,30 +1,28 @@
 #!/usr/bin/env python3
 """
 Blender & glTF Structural Validation Script for:
-  Open Skylight Museum Hall (`assets/architecture/museum-open-hall/`)
+  Open Skylight Museum Hall V2 (`assets/architecture/museum-open-hall/`)
 
 Verifies both `model.blend` and re-imported `model.glb`:
-  - Semantic node hierarchy survival (`Museum_Open_Hall`, `Architecture`, `Skylight`,
-    `Lighting_Fixtures`, `Exhibition_Anchors`, `Lighting_Anchors`, `Navigation_Anchors`)
-  - Exact glTF metric dimensions, floor elevation (Y = 0.00 m), ceiling height (Y = 9.00 m),
-    entrance opening (5.60 m x 4.60 m), and skylight opening (13.60 m x 11.40 m)
-  - Presence and assignment of all 9 semantic PBR material slots
-  - Presence and local basis vectors of all 9 artwork anchors, 14 navigation anchors,
-    15 lighting anchors, and 9 optional floor placement anchors
-  - UV coordinate presence, zero degenerate triangles, and exclusion of Studio_Preview / Demo objects
+  - Preservation of all 7 hierarchy groups, all 16 original semantic meshes + V2 spatial-continuity
+    meshes (`Secondary_Gallery`, `Wall_Back_Portal_Closure`, `Entrance_Vestibule`) + all 15
+    independently addressable `Fixture_Head_*` spotlight nodes
+  - Exact main-hall clear dimensions (24.00 x 18.00 x 9.00 m), floor Y = 0.00 m, pitched skylight
+    ridge elevation (Y >= 12.50 m), and all 9 semantic PBR materials
+  - Presence of dual-UV `occlusionTexture` (`texCoord: 1`) on `Mat_Wall_Plaster`,
+    `Mat_Floor_Concrete`, and `Mat_Ceiling`
+  - Preservation of all 9+1 artwork anchors, 9 floor placement anchors, 15 lighting anchors,
+    and 14+1 navigation anchors, zero degenerate triangles, and relative `//textures/` paths
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-import math
 import struct
-import sys
 from pathlib import Path
 
 import bpy
-from mathutils import Quaternion, Vector
 
 ASSET_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ASSET_DIR.parent.parent.parent
@@ -33,7 +31,7 @@ WORK_VAL_DIR = REPO_ROOT / ".work" / "architecture" / "museum-open-hall" / "vali
 
 def parse_glb_json(glb_path: Path) -> dict:
     with glb_path.open("rb") as f:
-        magic, version, total_len = struct.unpack("<4sII", f.read(12))
+        magic, version, _ = struct.unpack("<4sII", f.read(12))
         assert magic == b"glTF", f"Invalid GLB magic: {magic}"
         assert version == 2, f"Unsupported glTF version: {version}"
         chunk_len, chunk_type = struct.unpack("<I4s", f.read(8))
@@ -54,7 +52,8 @@ def main() -> None:
     gltf_json = parse_glb_json(glb_path)
 
     node_names = [n.get("name", "") for n in gltf_json.get("nodes", [])]
-    mat_names = [m.get("name", "") for m in gltf_json.get("materials", [])]
+    mats_by_name = {m.get("name", ""): m for m in gltf_json.get("materials", [])}
+    mat_names = list(mats_by_name.keys())
 
     required_groups = [
         "Museum_Open_Hall",
@@ -70,7 +69,10 @@ def main() -> None:
         "Wall_Left",
         "Wall_Right",
         "Wall_Back",
+        "Wall_Back_Portal_Closure",
+        "Secondary_Gallery",
         "Wall_Entrance",
+        "Entrance_Vestibule",
         "Entrance_Frame",
         "Ceiling",
         "Ceiling_Beams",
@@ -82,6 +84,11 @@ def main() -> None:
         "Track_Right",
         "Track_Back",
         "Recessed_Fixtures",
+    ]
+    required_heads = [
+        f"Fixture_Head_{grp}_{i:02d}"
+        for grp in ("Back", "Left", "Right")
+        for i in range(1, 6)
     ]
     required_materials = [
         "Mat_Wall_Plaster",
@@ -98,52 +105,80 @@ def main() -> None:
         f"Anchor_Artwork_{wall}_{i:02d}"
         for wall in ("Back", "Left", "Right")
         for i in (1, 2, 3)
-    ]
+    ] + ["Anchor_Artwork_Secondary_01"]
     required_nav_anchors = [
         "Anchor_Navigation_Entrance",
         "Anchor_Navigation_Center",
         "Anchor_Navigation_Back",
         "Anchor_Navigation_Left",
         "Anchor_Navigation_Right",
+        "Anchor_Navigation_Secondary",
     ] + [f"Anchor_Navigation_Artwork_{i:02d}" for i in range(1, 10)]
+    required_place_anchors = [
+        "Anchor_Place_Central_Installation",
+        "Anchor_Place_Pedestal_01",
+        "Anchor_Place_Pedestal_02",
+        "Anchor_Place_Bench_01",
+        "Anchor_Place_Bench_02",
+        "Anchor_Place_Info_Stand",
+        "Anchor_Place_Invitation_Display",
+        "Anchor_Place_Partition_01",
+        "Anchor_Place_Partition_02",
+    ]
+    required_light_anchors = [
+        f"Anchor_Light_{wall}_{i:02d}"
+        for wall in ("Back", "Left", "Right")
+        for i in (1, 2, 3)
+    ] + [
+        "Anchor_Light_Center_01",
+        "Anchor_Light_Center_02",
+        "Anchor_Light_Ambient_01",
+        "Anchor_Light_Ambient_02",
+        "Anchor_Light_Ambient_03",
+        "Anchor_Light_Ambient_04",
+    ]
 
-    missing_groups = [n for n in required_groups if n not in node_names]
-    missing_meshes = [n for n in required_meshes if n not in node_names]
-    missing_mats = [m for m in required_materials if m not in mat_names]
-    missing_art = [a for a in required_art_anchors if a not in node_names]
-    missing_nav = [n for n in required_nav_anchors if n not in node_names]
+    for label, req in [
+        ("groups", required_groups),
+        ("meshes", required_meshes),
+        ("fixture_heads", required_heads),
+        ("materials", required_materials),
+        ("art_anchors", required_art_anchors),
+        ("nav_anchors", required_nav_anchors),
+        ("place_anchors", required_place_anchors),
+        ("light_anchors", required_light_anchors),
+    ]:
+        pool = mat_names if label == "materials" else node_names
+        missing = [x for x in req if x not in pool]
+        assert not missing, f"Missing {label}: {missing}"
 
     forbidden_leaks = [
         n for n in node_names
         if n.startswith(("Studio_", "Demo_", "Preview_Camera", "Render_Cam"))
     ]
-    assert not missing_groups, f"Missing hierarchy groups: {missing_groups}"
-    assert not missing_meshes, f"Missing architectural meshes: {missing_meshes}"
-    assert not missing_mats, f"Missing semantic materials: {missing_mats}"
-    assert not missing_art, f"Missing artwork anchors: {missing_art}"
-    assert not missing_nav, f"Missing navigation anchors: {missing_nav}"
     assert not forbidden_leaks, f"Authoring/demo objects leaked into GLB: {forbidden_leaks}"
     assert "cameras" not in gltf_json, "Cameras leaked into canonical GLB"
+    assert "lights" not in gltf_json.get("extensions", {}), "Punctual lights leaked into canonical GLB"
 
-    # Verify centered maxHeightMeters on every artwork anchor clears both floor (Y=0) and base reveal (Y=0.065 m)
+    # Verify dual-UV neutral `occlusionTexture` (`texCoord == 1`) on primary architectural surfaces
+    for ao_mat_name in ("Mat_Wall_Plaster", "Mat_Floor_Concrete", "Mat_Ceiling"):
+        occ = mats_by_name[ao_mat_name].get("occlusionTexture")
+        assert occ is not None, f"{ao_mat_name} missing glTF occlusionTexture"
+        assert occ.get("texCoord") == 1, f"{ao_mat_name} occlusionTexture expected texCoord=1, got {occ}"
+
     nodes_by_name = {n.get("name", ""): n for n in gltf_json.get("nodes", [])}
     for aname in required_art_anchors:
         anode = nodes_by_name[aname]
         ay = anode["translation"][1]
-        extras = anode.get("extras", {})
-        max_h = extras.get("maxHeightMeters", 0.0)
+        max_h = anode.get("extras", {}).get("maxHeightMeters", 0.0)
         bottom_y = ay - max_h * 0.5
-        assert bottom_y >= 0.249, (
-            f"{aname} centered maxHeightMeters={max_h} at Y={ay} dips to Y={bottom_y:.3f}m (< 0.25m floor clearance)"
-        )
+        assert bottom_y >= 0.249, f"{aname} centered maxHeightMeters={max_h} dips to Y={bottom_y:.3f}m"
 
-    # Verify `model.blend` contains zero machine-local absolute external image paths
     bpy.ops.wm.open_mainfile(filepath=str(blend_path))
     for img in bpy.data.images:
         if img.filepath:
             assert img.filepath.startswith("//textures/"), f"Non-relative image path in model.blend: {img.filepath}"
 
-    # Re-import `model.glb` into a clean factory Blender session to measure real imported geometry
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=str(glb_path))
 
@@ -159,14 +194,12 @@ def main() -> None:
         me.calc_loop_triangles()
         tris = len(me.loop_triangles)
         verts = len(me.vertices)
-        has_uv = len(me.uv_layers) > 0
-        assert has_uv, f"Mesh {obj.name} is missing UVs"
+        assert len(me.uv_layers) > 0, f"Mesh {obj.name} is missing UVs"
 
         for tri in me.loop_triangles:
             if tri.area < 1e-10:
                 degenerate_faces += 1
 
-        # Compute world bounds in Blender (X_b, Y_b, Z_b) -> convert back to glTF (X, Z_b, -Y_b)
         pts_g = []
         for v in me.vertices:
             wb = obj.matrix_world @ v.co
@@ -185,13 +218,16 @@ def main() -> None:
         total_tris += tris
         total_verts += verts
 
-    # Verify floor top is Y = 0.0000 m and interior clear width/depth/height match 24 x 18 x 9 m
-    assert abs(mesh_report["Floor"]["boundsGltfMax"][1] - 0.0) < 1e-4, f"Floor top Y != 0: {mesh_report['Floor']}"
+    # Verify exact 24 x 18 x 9 m main-hall clear bounds AND pitched skylight ridge height > 12.6 m!
+    assert abs(mesh_report["Floor"]["boundsGltfMax"][1] - 0.0) < 1e-4
     assert abs(mesh_report["Wall_Left"]["boundsGltfMax"][0] - (-12.0)) < 1e-3
     assert abs(mesh_report["Wall_Right"]["boundsGltfMin"][0] - 12.0) < 1e-3
     assert abs(mesh_report["Wall_Back"]["boundsGltfMax"][2] - (-9.0)) < 1e-3
     assert abs(mesh_report["Wall_Entrance"]["boundsGltfMin"][2] - 9.0) < 1e-3
     assert abs(mesh_report["Ceiling"]["boundsGltfMin"][1] - 9.0) < 1e-3
+    assert mesh_report["Skylight_Glass"]["boundsGltfMax"][1] >= 12.60, (
+        f"Expected pitched skylight glass ridge >= 12.60 m, got {mesh_report['Skylight_Glass']}"
+    )
     assert degenerate_faces == 0, f"Found {degenerate_faces} degenerate triangles"
 
     summary = {
@@ -200,7 +236,7 @@ def main() -> None:
         "glbSizeBytes": len(glb_bytes),
         "glbSha256": glb_sha256,
         "nodeCount": len(node_names),
-        "meshCount": len(mesh_report),
+        "meshObjectCount": len(mesh_report),
         "materialCount": len(mat_names),
         "imageCount": len(gltf_json.get("images", [])),
         "totalTriangles": total_tris,

@@ -5,8 +5,8 @@ Reproducible Blender Python Architectural Generator for:
 
 Supports staged visual production and final deliverable export:
   - `--stage massing` : Stage A neutral clay architectural massing studies (5 views)
-  - `--stage detail`  : Stage B neutral clay full architectural detailing studies (6 views)
-  - `--stage final`   : Stages C, D, E, F — coherent PBR texture generation, Cycles lighting
+  - `--stage detail`  : Stage B neutral clay full architectural detailing studies (4 views)
+  - `--stage final`   : Stages C, D, E, F — coherent PBR texture synthesis, Cycles lighting
                         scenarios (Soft Daylight, Direct Sunlight, Evening Exhibition),
                         12 required architectural & exhibition renders, catalog `preview.webp`,
                         editable `model.blend`, and self-contained `model.glb`.
@@ -15,7 +15,7 @@ Supports staged visual production and final deliverable export:
 
 Coordinate convention (exported glTF 2.0 Y-up, meters):
   - X : Hall width  (-12.00 m Left Wall to +12.00 m Right Wall; 24.00 m clear)
-  - Y : Height      (  0.00 m Finished Floor to +9.00 m Main Ceiling; +10.36 m Skylight Glass)
+  - Y : Height      (  0.00 m Finished Floor to +9.00 m Main Ceiling; +10.68 m Skylight Glass)
   - Z : Hall depth  ( -9.00 m Main Rear Exhibition Wall to +9.00 m Entrance Wall; 18.00 m clear)
   - Origin (0, 0, 0): Center of interior finished floor.
   - Blender internal conversion: (X_b, Y_b, Z_b) = (X_g, -Z_g, Y_g), a proper +90 deg X rotation
@@ -25,10 +25,7 @@ Coordinate convention (exported glTF 2.0 Y-up, meters):
 from __future__ import annotations
 
 import argparse
-import hashlib
-import json
 import math
-import os
 import shutil
 import subprocess
 import sys
@@ -40,7 +37,7 @@ import bmesh
 from mathutils import Matrix, Vector
 
 # ---------------------------------------------------------------------------
-# Paths & Constants
+# Paths & Architectural Specification Constants
 # ---------------------------------------------------------------------------
 
 ASSET_DIR = Path(__file__).resolve().parent
@@ -49,49 +46,53 @@ TEX_DIR = ASSET_DIR / "textures"
 WORK_DIR = REPO_ROOT / ".work" / "architecture" / "museum-open-hall"
 
 # Core Interior Clear Dimensions (glTF meters)
-HALL_WIDTH = 24.00       # X: -12.00 to +12.00
-HALL_DEPTH = 18.00       # Z:  -9.00 to  +9.00
-CEILING_HEIGHT = 9.00    # Y:   0.00 to  +9.00
+HALL_WIDTH = 24.00          # X: -12.00 to +12.00
+HALL_DEPTH = 18.00          # Z:  -9.00 to  +9.00
+CEILING_HEIGHT = 9.00       # Y:   0.00 to  +9.00 floating canopy soffit
 
-HALF_W = HALL_WIDTH * 0.5   # 12.00
-HALF_D = HALL_DEPTH * 0.5   #  9.00
+HALF_W = HALL_WIDTH * 0.5   # 12.00 m
+HALF_D = HALL_DEPTH * 0.5   #  9.00 m
 
-WALL_THICK = 0.40           # 400 mm structural exterior walls
-PORTAL_DEPTH = 1.20         # 1200 mm deep monumental entrance portal (+9.00 to +10.20)
-FLOOR_THICK = 0.32          # 320 mm structural floor slab (-0.32 to 0.00)
+WALL_THICK = 0.40           # 400 mm structural perimeter walls
+PORTAL_DEPTH = 1.60         # 1600 mm deep monumental architectural entrance portal (+9.00 to +10.60)
+FLOOR_THICK = 0.32          # 320 mm structural concrete slab (-0.32 to 0.00)
 
-ENTRANCE_WIDTH = 5.60       # X: -2.80 to +2.80
-ENTRANCE_HEIGHT = 4.60      # Y:  0.00 to +4.60
-ENTRANCE_FRAME_T = 0.060    # 60 mm architectural metal portal liner
+ENTRANCE_WIDTH = 5.60       # X: -2.80 to +2.80 (within 5-6 m spec)
+ENTRANCE_HEIGHT = 4.80      # Y:  0.00 to +4.80 (within 4-5 m spec)
+ENTRANCE_FRAME_T = 0.055    # 55 mm anodized architectural bronze-pewter portal liner
 
-# Wall-to-floor & wall-to-ceiling recessed shadow reveals
-BASE_REVEAL_H = 0.065       # 65 mm high floating wall base shadow reveal
-BASE_REVEAL_D = 0.028       # 28 mm deep recessed shadow channel
-TOP_REVEAL_H = 0.025        # 25 mm high ceiling perimeter shadow reveal
-TOP_REVEAL_D = 0.022        # 22 mm deep ceiling shadow channel
+# Subtle architectural wall-to-floor & floating-canopy perimeter cove details
+BASE_REVEAL_H = 0.024       # 24 mm crisp museum wall-base shadow gap (subtle, non-cartoonish)
+BASE_REVEAL_D = 0.024       # 24 mm recessed base shadow channel depth
+TOP_WALL_REVEAL_H = 0.022   # 22 mm crisp ceiling shadow quirk on front & rear walls
+TOP_WALL_REVEAL_D = 0.020
 
-# Skylight Architecture (4 x 4 monumental coffer bays)
-SKYLIGHT_W = 13.60          # X: -6.80 to +6.80 (within 13-14 m spec)
-SKYLIGHT_D = 11.40          # Z: -5.70 to +5.70 (within 11-12 m spec)
-SKY_HALF_W = SKYLIGHT_W * 0.5   # 6.80
-SKY_HALF_D = SKYLIGHT_D * 0.5   # 5.70
-SKY_CANT = 0.08             # 80 mm outward cant over 1.28 m daylight well height (~3.6 deg)
-SKY_WELL_TOP_Y = 10.28      # Top of canted plaster skylight reveal well
-SKY_FRAME_TOP_Y = 10.44     # Top of aluminum mullion frame
-SKY_CURB_TOP_Y = 10.52      # Exterior curb flashing cap
-SKY_GLASS_Y0 = 10.350       # Bottom of 18 mm laminated skylight glass
-SKY_GLASS_Y1 = 10.368       # Top of 18 mm laminated skylight glass
+# Floating ceiling canopy & perimeter side daylight coves (inspired by contemporary museum daylight coves)
+COVE_SIDE_W = 0.68          # 680 mm wide architectural daylight coves along Left & Right exhibition walls
+COVE_TOP_Y = 9.76           # 760 mm tall sculptural canopy fascia & side daylight cove pocket; sealed above
 
-# Recessed U-shaped exhibition lighting track geometry
-TRACK_X = 8.80              # Left/Right tracks at X = +-8.80 m (3.20 m from side walls)
-TRACK_BACK_Z = -6.50        # Rear track at Z = -6.50 m (2.50 m from rear wall)
-TRACK_Z_END = 6.50          # Side tracks run Z = -6.50 to +6.50 m
-TRACK_SLOT_W = 0.068        # 68 mm recessed ceiling slot width
-TRACK_SLOT_D = 0.052        # 52 mm recessed slot depth into ceiling
+# Monumental 5-bay Skylight Architecture (13.60 m x 11.80 m aperture, 1.68 m deep canted light well)
+SKYLIGHT_W = 13.60          # X: -6.80 to +6.80 at Y = 9.00 m (within 13-14 m spec)
+SKYLIGHT_D = 11.80          # Z: -5.90 to +5.90 at Y = 9.00 m (within 11-12 m spec)
+SKY_HALF_W = SKYLIGHT_W * 0.5   # 6.80 m
+SKY_HALF_D = SKYLIGHT_D * 0.5   # 5.90 m
+SKY_CANT = 0.14             # 140 mm outward cant over 1.68 m deep plaster light well (~4.8 deg)
+SKY_WELL_TOP_Y = 10.68      # Top of canted plaster skylight well
+SKY_FRAME_TOP_Y = 10.82     # Top of powder-coated aluminum glazing mullions
+SKY_CURB_TOP_Y = 10.90      # Exterior skylight flashing curb cap
+SKY_GLASS_Y0 = 10.680       # Bottom of 20 mm laminated low-iron skylight glass
+SKY_GLASS_Y1 = 10.700       # Top of 20 mm laminated low-iron skylight glass
+
+# Recessed U-shaped architectural lighting track slots centered cleanly in the floating soffit wings
+TRACK_X = 9.06              # Exact centerline of Left/Right floating soffits ((6.80 + 11.32)/2 = 9.06 m)
+TRACK_BACK_Z = -7.35        # Exact centerline of Rear soffit ((-8.98 + -5.90)/2 = -7.44 -> -7.35 m)
+TRACK_Z_END = 6.80          # Side tracks run Z = -7.35 to +6.80 m
+TRACK_SLOT_W = 0.076        # 76 mm recessed ceiling slot width
+TRACK_SLOT_D = 0.072        # 72 mm recessed ceiling slot depth
 
 # Exhibition Artwork Mounting Anchors (9 primary positions)
-# Centered mounting at Y = 1.55 m supports up to 2.60 m height with 0.25 m floor clearance
-# (0.185 m above the 0.065 m base shadow reveal). Taller works up to 5.60 m shift local +Y by (H - 2.60)/2.
+# Centered mounting at Y = 1.55 m supports up to 2.60 m height with 0.25 m floor clearance.
+# Taller works up to 5.60 m shift local +Y by (H - 2.60)/2.
 ARTWORK_CENTER_Y = 1.55
 ARTWORK_MIN_BOTTOM_Y = 0.25
 ARTWORK_MAX_CENTERED_H = round((ARTWORK_CENTER_Y - ARTWORK_MIN_BOTTOM_Y) * 2.0, 4)  # 2.60 m
@@ -111,7 +112,7 @@ ARTWORK_SPECS = [
         "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.80,
         "nav_dist": 3.60,
-        "track_pos": (-6.40, 8.84, TRACK_BACK_Z),
+        "track_pos": (-6.40, 8.92, TRACK_BACK_Z),
     },
     {
         "name": "Anchor_Artwork_Back_02",
@@ -124,7 +125,7 @@ ARTWORK_SPECS = [
         "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.80,
         "nav_dist": 3.80,
-        "track_pos": (0.00, 8.84, TRACK_BACK_Z),
+        "track_pos": (0.00, 8.92, TRACK_BACK_Z),
     },
     {
         "name": "Anchor_Artwork_Back_03",
@@ -137,7 +138,7 @@ ARTWORK_SPECS = [
         "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.80,
         "nav_dist": 3.60,
-        "track_pos": (6.40, 8.84, TRACK_BACK_Z),
+        "track_pos": (6.40, 8.92, TRACK_BACK_Z),
     },
     # Left wall (X = -12.00, inward normal +X, local +X = world -Z, local +Y = world +Y)
     {
@@ -151,7 +152,7 @@ ARTWORK_SPECS = [
         "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
-        "track_pos": (-TRACK_X, 8.84, -5.20),
+        "track_pos": (-TRACK_X, 8.92, -5.20),
     },
     {
         "name": "Anchor_Artwork_Left_02",
@@ -164,7 +165,7 @@ ARTWORK_SPECS = [
         "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
-        "track_pos": (-TRACK_X, 8.84, 0.00),
+        "track_pos": (-TRACK_X, 8.92, 0.00),
     },
     {
         "name": "Anchor_Artwork_Left_03",
@@ -177,7 +178,7 @@ ARTWORK_SPECS = [
         "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
-        "track_pos": (-TRACK_X, 8.84, 5.20),
+        "track_pos": (-TRACK_X, 8.92, 5.20),
     },
     # Right wall (X = +12.00, inward normal -X, local +X = world +Z, local +Y = world +Y)
     {
@@ -191,7 +192,7 @@ ARTWORK_SPECS = [
         "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
-        "track_pos": (TRACK_X, 8.84, -5.20),
+        "track_pos": (TRACK_X, 8.92, -5.20),
     },
     {
         "name": "Anchor_Artwork_Right_02",
@@ -204,7 +205,7 @@ ARTWORK_SPECS = [
         "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
-        "track_pos": (TRACK_X, 8.84, 0.00),
+        "track_pos": (TRACK_X, 8.92, 0.00),
     },
     {
         "name": "Anchor_Artwork_Right_03",
@@ -217,7 +218,7 @@ ARTWORK_SPECS = [
         "max_height": ARTWORK_MAX_CENTERED_H,
         "clearance": 0.70,
         "nav_dist": 3.50,
-        "track_pos": (TRACK_X, 8.84, 5.20),
+        "track_pos": (TRACK_X, 8.92, 5.20),
     },
 ]
 
@@ -326,7 +327,7 @@ def look_at_blender_native(
 class ArchMesh:
     """Accumulates clean architectural geometry directly in glTF metric coordinates."""
 
-    def __init__(self, name: str, uv_scale_meters: float = 2.5):
+    def __init__(self, name: str, uv_scale_meters: float = 4.0):
         self.name = name
         self.uv_scale = uv_scale_meters
         self.bm = bmesh.new()
@@ -339,10 +340,6 @@ class ArchMesh:
         p3: Tuple[float, float, float],
     ) -> bmesh.types.BMFace:
         verts = [self.bm.verts.new(g2b_pt(*p)) for p in (p0, p1, p2, p3)]
-        return self.bm.faces.new(verts)
-
-    def add_poly_g(self, pts: Sequence[Tuple[float, float, float]]) -> bmesh.types.BMFace:
-        verts = [self.bm.verts.new(g2b_pt(*p)) for p in pts]
         return self.bm.faces.new(verts)
 
     def add_box_g(
@@ -359,7 +356,6 @@ class ArchMesh:
         """
         Add an axis-aligned box in glTF coordinates [x0, x1] x [y0, y1] x [z0, z1]
         with outward-pointing normals and optional crisp 1-segment architectural edge bevel.
-        `skip_faces` may include: '-x', '+x', '-y', '+y', '-z', '+z'.
         """
         sub = bmesh.new()
         v000 = sub.verts.new(g2b_pt(x0, y0, z0))
@@ -397,6 +393,31 @@ class ArchMesh:
         self._append_bmesh(sub)
         sub.free()
 
+    def add_hexahedron_g(
+        self,
+        b0: Tuple[float, float, float],
+        b1: Tuple[float, float, float],
+        b2: Tuple[float, float, float],
+        b3: Tuple[float, float, float],
+        t0: Tuple[float, float, float],
+        t1: Tuple[float, float, float],
+        t2: Tuple[float, float, float],
+        t3: Tuple[float, float, float],
+    ) -> None:
+        """Closed 6-face manifold hexahedron with deterministically outward-recalculated normals."""
+        sub = bmesh.new()
+        vb = [sub.verts.new(g2b_pt(*p)) for p in (b0, b1, b2, b3)]
+        vt = [sub.verts.new(g2b_pt(*p)) for p in (t0, t1, t2, t3)]
+        sub.faces.new((vb[0], vb[3], vb[2], vb[1]))
+        sub.faces.new((vt[0], vt[1], vt[2], vt[3]))
+        sub.faces.new((vb[0], vb[1], vt[1], vt[0]))
+        sub.faces.new((vb[1], vb[2], vt[2], vt[1]))
+        sub.faces.new((vb[2], vb[3], vt[3], vt[2]))
+        sub.faces.new((vb[3], vb[0], vt[0], vt[3]))
+        bmesh.ops.recalc_face_normals(sub, faces=list(sub.faces))
+        self._append_bmesh(sub)
+        sub.free()
+
     def add_tapered_beam_x(
         self,
         x0: float,
@@ -406,9 +427,9 @@ class ArchMesh:
         z_center: float,
         w_bottom: float,
         w_top: float,
-        bevel: float = 0.003,
+        bevel: float = 0.0025,
     ) -> None:
-        """Transverse structural beam spanning X with subtle upward architectural taper."""
+        """Slender transverse skylight blade spanning X with subtle upward architectural taper."""
         sub = bmesh.new()
         hb = w_bottom * 0.5
         ht = w_top * 0.5
@@ -445,7 +466,7 @@ class ArchMesh:
         p1_g: Tuple[float, float, float],
         r0: float,
         r1: float,
-        segments: int = 20,
+        segments: int = 16,
         cap_start: bool = True,
         cap_end: bool = True,
     ) -> None:
@@ -498,7 +519,7 @@ class ArchMesh:
 
     def finalize(
         self,
-        parent_obj: bpy.types.Object,
+        parent_obj: Optional[bpy.types.Object],
         collection: bpy.types.Collection,
         material: bpy.types.Material,
         smooth_angle_deg: float = 28.0,
@@ -511,23 +532,19 @@ class ArchMesh:
         inv_s = 1.0 / self.uv_scale
         for face in self.bm.faces:
             n_b = face.normal
-            # Convert normal back to glTF: (nx, nz, -ny)
             nx, ny, nz = n_b.x, n_b.z, -n_b.y
             ax, ay, az = abs(nx), abs(ny), abs(nz)
             for loop in face.loops:
                 co_b = loop.vert.co
                 gx, gy, gz = co_b.x, co_b.z, -co_b.y
                 if ay >= ax and ay >= az:
-                    # Horizontal floor/ceiling face: U = X, V = -Z
                     u = (gx + HALF_W) * inv_s
                     v = (-gz + HALF_D) * inv_s
                 elif az >= ax:
-                    # Front/Rear wall face: U = +-X, V = Y
                     sign_x = 1.0 if nz >= 0.0 else -1.0
                     u = (sign_x * gx + HALF_W) * inv_s
                     v = gy * inv_s
                 else:
-                    # Left/Right wall face: U = -+Z, V = Y
                     sign_z = -1.0 if nx >= 0.0 else 1.0
                     u = (sign_z * gz + HALF_D) * inv_s
                     v = gy * inv_s
@@ -537,7 +554,6 @@ class ArchMesh:
         self.bm.to_mesh(mesh)
         self.bm.free()
 
-        # Mark sharp edges beyond `smooth_angle_deg` and use flat/sharp normals cleanly
         bm_sharp = bmesh.new()
         bm_sharp.from_mesh(mesh)
         cos_thresh = math.cos(math.radians(smooth_angle_deg))
@@ -554,7 +570,8 @@ class ArchMesh:
 
         mesh.materials.append(material)
         obj = bpy.data.objects.new(self.name, mesh)
-        obj.parent = parent_obj
+        if parent_obj is not None:
+            obj.parent = parent_obj
         collection.objects.link(obj)
         return obj
 
@@ -570,13 +587,20 @@ def build_floor(
     mat_floor: bpy.types.Material,
     detailed: bool,
 ) -> bpy.types.Object:
-    builder = ArchMesh("Floor", uv_scale_meters=3.0)
+    builder = ArchMesh("Floor", uv_scale_meters=4.8)
     if not detailed:
-        builder.add_box_g(-HALF_W - WALL_THICK, HALF_W + WALL_THICK, -FLOOR_THICK, 0.0, -HALF_D - WALL_THICK, HALF_D + PORTAL_DEPTH)
+        builder.add_box_g(
+            -HALF_W - WALL_THICK,
+            HALF_W + WALL_THICK,
+            -FLOOR_THICK,
+            0.0,
+            -HALF_D - WALL_THICK,
+            HALF_D + PORTAL_DEPTH,
+        )
         return builder.finalize(arch_parent, col, mat_floor)
 
-    # Structural slab base (-0.32 m to -0.003 m) spanning full building footprint including entrance threshold
-    joint_d = 0.0028  # 2.8 mm deep micro-beveled expansion joint bottom
+    # Structural slab base (-0.32 m to -0.0026 m) spanning full building footprint + entrance portal
+    joint_d = 0.0026  # 2.6 mm crisp saw-cut control joint bottom
     builder.add_box_g(
         -HALF_W - WALL_THICK,
         HALF_W + WALL_THICK,
@@ -586,46 +610,46 @@ def build_floor(
         HALF_D + PORTAL_DEPTH,
     )
 
-    # Finished floor top panels (-0.0028 m to 0.000 m) with subtle 3.2 mm expansion joints
-    # Perimeter honed stone/concrete border band (0.60 m wide) + 4 x 3 poured concrete gallery bays
-    # aligned cleanly with the 4 x 4 skylight structural axes!
-    gap = 0.0032
+    # Poured, power-troweled museum concrete slabs (-0.0026 m to 0.000 m) with 2.8 mm micro-beveled control joints!
+    # X cuts at [-12.03, -7.20, -2.80, +2.80, +7.20, +12.03] — note +-2.80 m aligns strictly with the 5.60 m entrance jambs!
+    # Z cuts at [-9.03, -4.50, 0.00, +4.50, +9.03] plus continuous central portal threshold out to +10.60 m!
+    gap = 0.0028
     hg = gap * 0.5
-    bx = HALF_W - 0.60  # 11.40 m
-    bz = HALF_D - 0.60  #  8.40 m
+    ox = HALF_W + 0.03
+    oz = HALF_D + 0.03
+    x_cuts = [-ox, -7.20, -ENTRANCE_WIDTH * 0.5, ENTRANCE_WIDTH * 0.5, 7.20, ox]
+    z_cuts = [-oz, -4.50, 0.00, 4.50, oz]
 
-    # Outer ring extending slightly under the recessed wall channel (-12.04 to +12.04, -9.04 to +9.04)
-    ox = HALF_W + 0.04
-    oz = HALF_D + 0.04
-    # 4 perimeter border strips around [-bx, +bx] x [-bz, +bz]
-    builder.add_box_g(-ox, ox, -joint_d, 0.0, -oz, -bz - hg, bevel=0.001)
-    # Front border split around entrance portal [-2.80, +2.80] so threshold slab runs cleanly out to +10.20 m
-    builder.add_box_g(-ox, -ENTRANCE_WIDTH * 0.5 - hg, -joint_d, 0.0, bz + hg, oz, bevel=0.001)
-    builder.add_box_g(ENTRANCE_WIDTH * 0.5 + hg, ox, -joint_d, 0.0, bz + hg, oz, bevel=0.001)
-    # Entrance portal threshold slab (flush, continuous through the 1.20 m portal)
-    builder.add_box_g(
-        -ENTRANCE_WIDTH * 0.5 + hg,
-        ENTRANCE_WIDTH * 0.5 - hg,
-        -joint_d,
-        0.0,
-        bz + hg,
-        HALF_D + PORTAL_DEPTH,
-        bevel=0.001,
-    )
-    # Left & Right perimeter border strips
-    builder.add_box_g(-ox, -bx - hg, -joint_d, 0.0, -bz + hg, bz - hg, bevel=0.001)
-    builder.add_box_g(bx + hg, ox, -joint_d, 0.0, -bz + hg, bz - hg, bevel=0.001)
+    # Subtle recessed flush floor access-box hatch detail in bay (-7.20..-2.80, 0.00..4.50) inspired by real galleries
+    hatch_x0, hatch_x1 = -3.65, -3.39
+    hatch_z0, hatch_z1 = 2.62, 2.88
 
-    # Central 4 x 4 architectural concrete bays aligned with skylight structural axes (-5.70, 0.00, +5.70 in X; -4.20, 0.00, +4.20 in Z)
-    x_cuts = [-bx, -5.70, 0.00, 5.70, bx]
-    z_cuts = [-bz, -2.85, 2.85, bz]
     for ix in range(len(x_cuts) - 1):
         for iz in range(len(z_cuts) - 1):
             x0 = x_cuts[ix] + hg
             x1 = x_cuts[ix + 1] - hg
             z0 = z_cuts[iz] + hg
             z1 = z_cuts[iz + 1] - hg
-            builder.add_box_g(x0, x1, -joint_d, 0.0, z0, z1, bevel=0.001)
+            if ix == 1 and iz == 2:
+                # Subdivide cleanly around the 260 x 260 mm flush concrete floor hatch inlay
+                builder.add_box_g(x0, x1, -joint_d, 0.0, z0, hatch_z0 - hg, bevel=0.0008)
+                builder.add_box_g(x0, x1, -joint_d, 0.0, hatch_z1 + hg, z1, bevel=0.0008)
+                builder.add_box_g(x0, hatch_x0 - hg, -joint_d, 0.0, hatch_z0 + hg, hatch_z1 - hg, bevel=0.0008)
+                builder.add_box_g(hatch_x1 + hg, x1, -joint_d, 0.0, hatch_z0 + hg, hatch_z1 - hg, bevel=0.0008)
+                builder.add_box_g(hatch_x0 + hg, hatch_x1 - hg, -joint_d, 0.0, hatch_z0 + hg, hatch_z1 - hg, bevel=0.0008)
+            else:
+                builder.add_box_g(x0, x1, -joint_d, 0.0, z0, z1, bevel=0.0008)
+
+    # Monumental entrance portal threshold slab (Z = +9.03 to +10.60, X = -2.80 to +2.80)
+    builder.add_box_g(
+        -ENTRANCE_WIDTH * 0.5 + hg,
+        ENTRANCE_WIDTH * 0.5 - hg,
+        -joint_d,
+        0.0,
+        oz + hg,
+        HALF_D + PORTAL_DEPTH,
+        bevel=0.0008,
+    )
 
     return builder.finalize(arch_parent, col, mat_floor)
 
@@ -639,84 +663,97 @@ def build_walls_and_portal(
     detailed: bool,
 ) -> None:
     y_bot = BASE_REVEAL_H if detailed else 0.0
-    y_top = (CEILING_HEIGHT - TOP_REVEAL_H) if detailed else CEILING_HEIGHT
-    bev = 0.0025 if detailed else 0.0
-    corner_gap = 0.002 if detailed else 0.0  # crisp 2 mm vertical shadow hairline at wall corners
+    # Left & Right exhibition walls rise seamlessly into the 9.76 m architectural side daylight coves,
+    # while Rear & Entrance walls meet the floating ceiling canopy with a crisp 22 mm shadow reveal!
+    y_cove_wall_top = COVE_TOP_Y if detailed else CEILING_HEIGHT
+    y_end_wall_top = (CEILING_HEIGHT - TOP_WALL_REVEAL_H) if detailed else CEILING_HEIGHT
+    bev = 0.0022 if detailed else 0.0
+    corner_gap = 0.0018 if detailed else 0.0
 
     # 1. Wall_Back (Z = -9.40 to -9.00)
-    wb = ArchMesh("Wall_Back", uv_scale_meters=3.2)
-    # Full-height exterior light-tight structural backing [-9.40, -9.028]
-    wb.add_box_g(-HALF_W - WALL_THICK, HALF_W + WALL_THICK, 0.0, CEILING_HEIGHT + 0.45, -HALF_D - WALL_THICK, -HALF_D - BASE_REVEAL_D)
-    # Interior exhibition plaster leaf [-9.028, -9.000] floating cleanly between base & ceiling shadow reveals
-    wb.add_box_g(-HALF_W + corner_gap, HALF_W - corner_gap, y_bot, y_top, -HALF_D - BASE_REVEAL_D, -HALF_D, bevel=bev)
+    wb = ArchMesh("Wall_Back", uv_scale_meters=4.8)
+    wb.add_box_g(-HALF_W - WALL_THICK, HALF_W + WALL_THICK, 0.0, COVE_TOP_Y + 0.12, -HALF_D - WALL_THICK, -HALF_D - BASE_REVEAL_D)
+    wb.add_box_g(-HALF_W + corner_gap, HALF_W - corner_gap, y_bot, y_end_wall_top, -HALF_D - BASE_REVEAL_D, -HALF_D, bevel=bev)
+    # Upper rear cove closure inside left & right 680 mm side coves (Y = y_end_wall_top to COVE_TOP_Y)
+    if detailed:
+        wb.add_box_g(-HALF_W + corner_gap, -HALF_W + COVE_SIDE_W, y_end_wall_top, y_cove_wall_top, -HALF_D - BASE_REVEAL_D, -HALF_D)
+        wb.add_box_g(HALF_W - COVE_SIDE_W, HALF_W - corner_gap, y_end_wall_top, y_cove_wall_top, -HALF_D - BASE_REVEAL_D, -HALF_D)
     wb.finalize(arch_parent, col, mat_wall)
 
     # 2. Wall_Left (X = -12.40 to -12.00)
-    wl = ArchMesh("Wall_Left", uv_scale_meters=3.2)
-    wl.add_box_g(-HALF_W - WALL_THICK, -HALF_W - BASE_REVEAL_D, 0.0, CEILING_HEIGHT + 0.45, -HALF_D, HALF_D)
-    wl.add_box_g(-HALF_W - BASE_REVEAL_D, -HALF_W, y_bot, y_top, -HALF_D + corner_gap, HALF_D - corner_gap, bevel=bev)
+    wl = ArchMesh("Wall_Left", uv_scale_meters=4.8)
+    wl.add_box_g(-HALF_W - WALL_THICK, -HALF_W - BASE_REVEAL_D, 0.0, COVE_TOP_Y + 0.12, -HALF_D, HALF_D)
+    wl.add_box_g(-HALF_W - BASE_REVEAL_D, -HALF_W, y_bot, y_cove_wall_top, -HALF_D + corner_gap, HALF_D - corner_gap, bevel=bev)
     wl.finalize(arch_parent, col, mat_wall)
 
     # 3. Wall_Right (X = +12.00 to +12.40)
-    wr = ArchMesh("Wall_Right", uv_scale_meters=3.2)
-    wr.add_box_g(HALF_W + BASE_REVEAL_D, HALF_W + WALL_THICK, 0.0, CEILING_HEIGHT + 0.45, -HALF_D, HALF_D)
-    wr.add_box_g(HALF_W, HALF_W + BASE_REVEAL_D, y_bot, y_top, -HALF_D + corner_gap, HALF_D - corner_gap, bevel=bev)
+    wr = ArchMesh("Wall_Right", uv_scale_meters=4.8)
+    wr.add_box_g(HALF_W + BASE_REVEAL_D, HALF_W + WALL_THICK, 0.0, COVE_TOP_Y + 0.12, -HALF_D, HALF_D)
+    wr.add_box_g(HALF_W, HALF_W + BASE_REVEAL_D, y_bot, y_cove_wall_top, -HALF_D + corner_gap, HALF_D - corner_gap, bevel=bev)
     wr.finalize(arch_parent, col, mat_wall)
 
-    # 4. Wall_Entrance (Z = +9.00 to +10.20 with 5.60 m x 4.60 m portal opening)
-    we = ArchMesh("Wall_Entrance", uv_scale_meters=3.2)
-    ro_half_w = ENTRANCE_WIDTH * 0.5 + (ENTRANCE_FRAME_T if detailed else 0.0)  # 2.86 m rough opening half-width
-    ro_h = ENTRANCE_HEIGHT + (ENTRANCE_FRAME_T if detailed else 0.0)            # 4.66 m rough opening height
-    quirk = 0.012 if detailed else 0.0                                          # 12 mm shadow quirk around metal portal frame
+    # 4. Wall_Entrance (Z = +9.00 to +10.60 with sculpted 1.60 m deep, 5.60 m x 4.80 m architectural portal)
+    we = ArchMesh("Wall_Entrance", uv_scale_meters=4.8)
+    ew = ENTRANCE_WIDTH * 0.5  # 2.80 m clear half-width
+    eh = ENTRANCE_HEIGHT       # 4.80 m clear height
+    ft = ENTRANCE_FRAME_T      # 0.055 m metal reveal liner
+    ro_w = ew + (ft if detailed else 0.0)
+    ro_h = eh + (ft if detailed else 0.0)
 
-    # Left structural pier + plaster face
-    we.add_box_g(-HALF_W - WALL_THICK, -ro_half_w, 0.0, CEILING_HEIGHT + 0.45, HALF_D + BASE_REVEAL_D, HALF_D + PORTAL_DEPTH)
-    we.add_box_g(-HALF_W + corner_gap, -ro_half_w - quirk, y_bot, y_top, HALF_D, HALF_D + BASE_REVEAL_D, bevel=bev)
-    # Right structural pier + plaster face
-    we.add_box_g(ro_half_w, HALF_W + WALL_THICK, 0.0, CEILING_HEIGHT + 0.45, HALF_D + BASE_REVEAL_D, HALF_D + PORTAL_DEPTH)
-    we.add_box_g(ro_half_w + quirk, HALF_W - corner_gap, y_bot, y_top, HALF_D, HALF_D + BASE_REVEAL_D, bevel=bev)
+    # Left & Right structural piers (+9.024 to +10.60)
+    we.add_box_g(-HALF_W - WALL_THICK, -ro_w, 0.0, COVE_TOP_Y + 0.12, HALF_D + BASE_REVEAL_D, HALF_D + PORTAL_DEPTH)
+    we.add_box_g(ro_w, HALF_W + WALL_THICK, 0.0, COVE_TOP_Y + 0.12, HALF_D + BASE_REVEAL_D, HALF_D + PORTAL_DEPTH)
+    # Interior exhibition plaster wings at Z = +9.000
+    we.add_box_g(-HALF_W + corner_gap, -ew - (0.010 if detailed else 0.0), y_bot, y_end_wall_top, HALF_D, HALF_D + BASE_REVEAL_D, bevel=bev)
+    we.add_box_g(ew + (0.010 if detailed else 0.0), HALF_W - corner_gap, y_bot, y_end_wall_top, HALF_D, HALF_D + BASE_REVEAL_D, bevel=bev)
+    if detailed:
+        # Upper front cove end-closures inside left & right 680 mm side coves
+        we.add_box_g(-HALF_W + corner_gap, -HALF_W + COVE_SIDE_W, y_end_wall_top, y_cove_wall_top, HALF_D, HALF_D + BASE_REVEAL_D)
+        we.add_box_g(HALF_W - COVE_SIDE_W, HALF_W - corner_gap, y_end_wall_top, y_cove_wall_top, HALF_D, HALF_D + BASE_REVEAL_D)
+        # Inner plaster portal collar (Z = +9.024 to +9.54)
+        we.add_box_g(-ro_w, -ew, y_bot, eh, HALF_D + BASE_REVEAL_D, HALF_D + 0.54, bevel=bev)
+        we.add_box_g(ew, ro_w, y_bot, eh, HALF_D + BASE_REVEAL_D, HALF_D + 0.54, bevel=bev)
+        we.add_box_g(-ro_w, ro_w, eh, ro_h, HALF_D + BASE_REVEAL_D, HALF_D + 0.54, bevel=bev)
+        # Outer plaster portal collar (Z = +9.86 to +10.60)
+        we.add_box_g(-ro_w, -ew, y_bot, eh, HALF_D + 0.86, HALF_D + PORTAL_DEPTH, bevel=bev)
+        we.add_box_g(ew, ro_w, y_bot, eh, HALF_D + 0.86, HALF_D + PORTAL_DEPTH, bevel=bev)
+        we.add_box_g(-ro_w, ro_w, eh, ro_h, HALF_D + 0.86, HALF_D + PORTAL_DEPTH, bevel=bev)
     # Lintel header above portal opening (Y = ro_h to ceiling)
-    we.add_box_g(-ro_half_w, ro_half_w, ro_h, CEILING_HEIGHT + 0.45, HALF_D + BASE_REVEAL_D, HALF_D + PORTAL_DEPTH)
-    we.add_box_g(-ro_half_w - quirk, ro_half_w + quirk, ro_h + quirk, y_top, HALF_D, HALF_D + BASE_REVEAL_D, bevel=bev)
+    we.add_box_g(-ro_w, ro_w, ro_h, COVE_TOP_Y + 0.12, HALF_D + BASE_REVEAL_D, HALF_D + PORTAL_DEPTH)
+    we.add_box_g(-ew - (0.010 if detailed else 0.0), ew + (0.010 if detailed else 0.0), eh + (0.010 if detailed else 0.0), y_end_wall_top, HALF_D, HALF_D + BASE_REVEAL_D, bevel=bev)
     we.finalize(arch_parent, col, mat_wall)
 
-    # 5. Entrance_Frame (60 mm powder-coated architectural portal liner spanning Z = +8.995 to +10.205)
+    # 5. Entrance_Frame (Refined anodized bronze-pewter portal threshold band & subtle shadow trim)
     ef = ArchMesh("Entrance_Frame", uv_scale_meters=1.5)
-    ew = ENTRANCE_WIDTH * 0.5  # 2.80 m clear half-width
-    eh = ENTRANCE_HEIGHT       # 4.60 m clear height
-    ft = ENTRANCE_FRAME_T      # 0.06 m liner thickness
-    z_f0 = HALF_D - (0.006 if detailed else 0.0)
-    z_f1 = HALF_D + PORTAL_DEPTH + (0.006 if detailed else 0.0)
-    f_bev = 0.003 if detailed else 0.0
-    # Left jamb
-    ef.add_box_g(-ew - ft, -ew, 0.001, eh, z_f0, z_f1, bevel=f_bev)
-    # Right jamb
-    ef.add_box_g(ew, ew + ft, 0.001, eh, z_f0, z_f1, bevel=f_bev)
-    # Header lintel liner
-    ef.add_box_g(-ew - ft, ew + ft, eh, eh + ft, z_f0, z_f1, bevel=f_bev)
+    f_bev = 0.0025 if detailed else 0.0
+    if detailed:
+        ef.add_box_g(-ro_w, -ew, 0.001, eh, HALF_D + 0.55, HALF_D + 0.85, bevel=f_bev)
+        ef.add_box_g(ew, ro_w, 0.001, eh, HALF_D + 0.55, HALF_D + 0.85, bevel=f_bev)
+        ef.add_box_g(-ro_w, ro_w, eh, ro_h, HALF_D + 0.55, HALF_D + 0.85, bevel=f_bev)
+        ef.add_box_g(-ew - 0.010, -ew, 0.001, eh + 0.010, HALF_D + 0.002, HALF_D + BASE_REVEAL_D, bevel=0.001)
+        ef.add_box_g(ew, ew + 0.010, 0.001, eh + 0.010, HALF_D + 0.002, HALF_D + BASE_REVEAL_D, bevel=0.001)
+        ef.add_box_g(-ew - 0.010, ew + 0.010, eh, eh + 0.010, HALF_D + 0.002, HALF_D + BASE_REVEAL_D, bevel=0.001)
+    else:
+        ef.add_box_g(-ro_w, -ew, 0.001, eh, HALF_D, HALF_D + PORTAL_DEPTH)
+        ef.add_box_g(ew, ro_w, 0.001, eh, HALF_D, HALF_D + PORTAL_DEPTH)
+        ef.add_box_g(-ro_w, ro_w, eh, ro_h, HALF_D, HALF_D + PORTAL_DEPTH)
     ef.finalize(arch_parent, col, mat_portal)
 
-    # 6. Wall_Floor_Transitions (Recessed shadow-gap channels at wall base and ceiling perimeter)
+    # 6. Wall_Floor_Transitions (Subtle 24 mm recessed base shadow-gap channel + front/rear ceiling shadow reveals)
     wt = ArchMesh("Wall_Floor_Transitions", uv_scale_meters=1.0)
     if detailed:
-        # Base shadow-gap liners (L-profile recessed 28 mm behind plaster face, Y = 0.001 to 0.0645)
         t_th = 0.004
-        # Back wall base liner
-        wt.add_box_g(-HALF_W - BASE_REVEAL_D, HALF_W + BASE_REVEAL_D, 0.001, BASE_REVEAL_H - 0.0005, -HALF_D - BASE_REVEAL_D, -HALF_D - BASE_REVEAL_D + t_th)
-        # Left wall base liner
-        wt.add_box_g(-HALF_W - BASE_REVEAL_D, -HALF_W - BASE_REVEAL_D + t_th, 0.001, BASE_REVEAL_H - 0.0005, -HALF_D - BASE_REVEAL_D, HALF_D + BASE_REVEAL_D)
-        # Right wall base liner
-        wt.add_box_g(HALF_W + BASE_REVEAL_D - t_th, HALF_W + BASE_REVEAL_D, 0.001, BASE_REVEAL_H - 0.0005, -HALF_D - BASE_REVEAL_D, HALF_D + BASE_REVEAL_D)
-        # Entrance wings base liners
-        wt.add_box_g(-HALF_W - BASE_REVEAL_D, -ro_half_w, 0.001, BASE_REVEAL_H - 0.0005, HALF_D + BASE_REVEAL_D - t_th, HALF_D + BASE_REVEAL_D)
-        wt.add_box_g(ro_half_w, HALF_W + BASE_REVEAL_D, 0.001, BASE_REVEAL_H - 0.0005, HALF_D + BASE_REVEAL_D - t_th, HALF_D + BASE_REVEAL_D)
-        # Upper ceiling perimeter shadow-reveal liners (Y = 8.9755 to 8.999)
-        wt.add_box_g(-HALF_W - TOP_REVEAL_D, HALF_W + TOP_REVEAL_D, y_top + 0.0005, CEILING_HEIGHT - 0.001, -HALF_D - TOP_REVEAL_D, -HALF_D - TOP_REVEAL_D + t_th)
-        wt.add_box_g(-HALF_W - TOP_REVEAL_D, -HALF_W - TOP_REVEAL_D + t_th, y_top + 0.0005, CEILING_HEIGHT - 0.001, -HALF_D - TOP_REVEAL_D, HALF_D + TOP_REVEAL_D)
-        wt.add_box_g(HALF_W + TOP_REVEAL_D - t_th, HALF_W + TOP_REVEAL_D, y_top + 0.0005, CEILING_HEIGHT - 0.001, -HALF_D - TOP_REVEAL_D, HALF_D + TOP_REVEAL_D)
-        wt.add_box_g(-HALF_W - TOP_REVEAL_D, HALF_W + TOP_REVEAL_D, y_top + 0.0005, CEILING_HEIGHT - 0.001, HALF_D + TOP_REVEAL_D - t_th, HALF_D + TOP_REVEAL_D)
+        wt.add_box_g(-HALF_W - BASE_REVEAL_D, HALF_W + BASE_REVEAL_D, 0.0005, BASE_REVEAL_H - 0.0005, -HALF_D - BASE_REVEAL_D, -HALF_D - BASE_REVEAL_D + t_th)
+        wt.add_box_g(-HALF_W - BASE_REVEAL_D, -HALF_W - BASE_REVEAL_D + t_th, 0.0005, BASE_REVEAL_H - 0.0005, -HALF_D - BASE_REVEAL_D, HALF_D + BASE_REVEAL_D)
+        wt.add_box_g(HALF_W + BASE_REVEAL_D - t_th, HALF_W + BASE_REVEAL_D, 0.0005, BASE_REVEAL_H - 0.0005, -HALF_D - BASE_REVEAL_D, HALF_D + BASE_REVEAL_D)
+        wt.add_box_g(-HALF_W - BASE_REVEAL_D, -ew, 0.0005, BASE_REVEAL_H - 0.0005, HALF_D + BASE_REVEAL_D - t_th, HALF_D + BASE_REVEAL_D)
+        wt.add_box_g(ew, HALF_W + BASE_REVEAL_D, 0.0005, BASE_REVEAL_H - 0.0005, HALF_D + BASE_REVEAL_D - t_th, HALF_D + BASE_REVEAL_D)
+        # Rear & Entrance upper ceiling shadow-quirk liners (between -cx and +cx)
+        cx = HALF_W - COVE_SIDE_W
+        wt.add_box_g(-cx, cx, y_end_wall_top + 0.0005, CEILING_HEIGHT - 0.001, -HALF_D - TOP_WALL_REVEAL_D, -HALF_D - TOP_WALL_REVEAL_D + t_th)
+        wt.add_box_g(-cx, cx, y_end_wall_top + 0.0005, CEILING_HEIGHT - 0.001, HALF_D + TOP_WALL_REVEAL_D - t_th, HALF_D + TOP_WALL_REVEAL_D)
     else:
-        wt.add_box_g(-HALF_W, HALF_W, 0.0, 0.04, -HALF_D, -HALF_D + 0.015)
+        wt.add_box_g(-HALF_W, HALF_W, 0.0, 0.02, -HALF_D, -HALF_D + 0.015)
     wt.finalize(arch_parent, col, mat_trim)
 
 
@@ -731,202 +768,209 @@ def build_ceiling_and_skylight(
     mat_sky_glass: bpy.types.Material,
     detailed: bool,
 ) -> None:
-    # 1. Ceiling (Perimeter ceiling soffits with pocketed U-track slot + canted skylight daylight well)
-    cm = ArchMesh("Ceiling", uv_scale_meters=3.0)
-    ox = HALF_W + WALL_THICK
-    oz0 = -HALF_D - WALL_THICK
-    oz1 = HALF_D + PORTAL_DEPTH
-    y_soffit = CEILING_HEIGHT
-    y_slot_top = CEILING_HEIGHT + TRACK_SLOT_D  # 9.052 m
-    y_roof_top = SKY_WELL_TOP_Y                 # 10.28 m
+    # 1. Ceiling: Floating architectural canopy (Y = 9.00 m) spanning cleanly from Wall_Back to Wall_Entrance,
+    #    set back 680 mm from Wall_Left and Wall_Right to form two monumental full-length side daylight coves
+    #    (Y = 9.00 m to 9.76 m), capped above by a light-tight structural roof slab (Y = 9.76 m to 10.68 m),
+    #    and centered around a solid-manifold 1.68 m deep canted skylight well!
+    cm = ArchMesh("Ceiling", uv_scale_meters=4.2)
+    ox = HALF_W + WALL_THICK          # 12.40 m
+    oz0 = -HALF_D - WALL_THICK        # -9.40 m
+    oz1 = HALF_D + PORTAL_DEPTH       # +10.60 m
+    y_soffit = CEILING_HEIGHT         #  9.000 m
+    y_slot_top = CEILING_HEIGHT + TRACK_SLOT_D  # 9.072 m
+    y_cove_top = COVE_TOP_Y           #  9.760 m
+    y_roof_top = SKY_WELL_TOP_Y       # 10.680 m
 
     if not detailed:
-        # Simple perimeter ceiling slabs around [-6.80, +6.80] x [-5.70, +5.70]
         cm.add_box_g(-ox, ox, y_soffit, y_roof_top, oz0, -SKY_HALF_D)
         cm.add_box_g(-ox, ox, y_soffit, y_roof_top, SKY_HALF_D, oz1)
         cm.add_box_g(-ox, -SKY_HALF_W, y_soffit, y_roof_top, -SKY_HALF_D, SKY_HALF_D)
         cm.add_box_g(SKY_HALF_W, ox, y_soffit, y_roof_top, -SKY_HALF_D, SKY_HALF_D)
     else:
-        # Upper roof mass above track slot (Y = 9.052 to 10.28) with canted inner skylight daylight well!
-        # Let's build the outer roof slab outside [-6.88, +6.88] x [-5.78, +5.78] first:
-        wx = SKY_HALF_W + SKY_CANT  # 6.88 m at top of canted skylight reveal
-        wz = SKY_HALF_D + SKY_CANT  # 5.78 m at top of canted skylight reveal
-        cm.add_box_g(-ox, ox, y_slot_top, y_roof_top, oz0, -wz)
-        cm.add_box_g(-ox, ox, y_slot_top, y_roof_top, wz, oz1)
-        cm.add_box_g(-ox, -wx, y_slot_top, y_roof_top, -wz, wz)
-        cm.add_box_g(wx, ox, y_slot_top, y_roof_top, -wz, wz)
+        ix, iz = SKY_HALF_W, SKY_HALF_D          # 6.80, 5.90 m at Y = 9.00 m
+        wx = SKY_HALF_W + SKY_CANT               # 6.94 m at Y = 10.68 m
+        wz = SKY_HALF_D + SKY_CANT               # 6.04 m at Y = 10.68 m
+        bx = wx + 0.08                           # 7.02 m solid backing plane of canted skylight collar
+        bz = wz + 0.08                           # 6.12 m solid backing plane of canted skylight collar
 
-        # Lower ceiling soffit layer (Y = 9.000 to 9.052) subdivided cleanly around the U-shaped recessed lighting track slot!
-        # U-track slot occupies:
-        #   Back slot: X in [-8.834, +8.834], Z in [-6.534, -6.466]
-        #   Left slot: X in [-8.834, -8.766], Z in [-6.466, +6.534]
-        #   Right slot: X in [+8.766, +8.834], Z in [-6.466, +6.534]
-        hs = TRACK_SLOT_W * 0.5  # 0.034 m
-        tx0, tx1 = TRACK_X - hs, TRACK_X + hs     # 8.766, 8.834
-        tbz0, tbz1 = TRACK_BACK_Z - hs, TRACK_BACK_Z + hs  # -6.534, -6.466
-        tz_end = TRACK_Z_END + hs                 # +6.534
+        cx = HALF_W - COVE_SIDE_W                # 11.32 m (680 mm clear of +-12.00 m side walls!)
+        cz0 = -HALF_D - TOP_WALL_REVEAL_D        # -9.02 m (connects cleanly to Wall_Back!)
+        cz1 = HALF_D + TOP_WALL_REVEAL_D         # +9.02 m (connects cleanly to Wall_Entrance!)
 
-        # Zone 1: Far rear strip (Z from oz0 to tbz0 = -6.534)
-        cm.add_box_g(-ox, ox, y_soffit, y_slot_top, oz0, tbz0)
-        # Zone 2: Outer left strip (X from -ox to -tx1 = -8.834, Z from tbz0 to oz1)
-        cm.add_box_g(-ox, -tx1, y_soffit, y_slot_top, tbz0, oz1)
-        # Zone 3: Outer right strip (X from +tx1 = +8.834 to +ox, Z from tbz0 to oz1)
-        cm.add_box_g(tx1, ox, y_soffit, y_slot_top, tbz0, oz1)
-        # Zone 4: Front strip forward of side tracks (X from -tx1 to +tx1, Z from tz_end = +6.534 to oz1)
-        cm.add_box_g(-tx1, tx1, y_soffit, y_slot_top, tz_end, oz1)
-        # Zone 5: Inner soffit collar between U-track [-8.766, +8.766] x [-6.466, +6.534] and skylight well [-6.88, +6.88] x [-5.78, +5.78]
-        cm.add_box_g(-tx0, tx0, y_soffit, y_slot_top, tbz1, -wz)
-        cm.add_box_g(-tx0, tx0, y_soffit, y_slot_top, wz, tz_end)
-        cm.add_box_g(-tx0, -wx, y_soffit, y_slot_top, -wz, wz)
-        cm.add_box_g(wx, tx0, y_soffit, y_slot_top, -wz, wz)
+        # A. Light-tight structural upper roof slab (Y = 9.760 m to 10.680 m) outside [-bx, +bx] x [-bz, +bz]
+        cm.add_box_g(-ox, ox, y_cove_top, y_roof_top, oz0, -bz)
+        cm.add_box_g(-ox, ox, y_cove_top, y_roof_top, bz, oz1)
+        cm.add_box_g(-ox, -bx, y_cove_top, y_roof_top, -bz, bz)
+        cm.add_box_g(bx, ox, y_cove_top, y_roof_top, -bz, bz)
 
-        # Canted Skylight Daylight Well Collar (connects aperture [-6.80, +6.80] x [-5.70, +5.70] at Y=9.00
-        # smoothly up to [-6.88, +6.88] x [-5.78, +5.78] at Y=10.28, backed out to +-wx / +-wz!)
-        # 4 trapezoidal cross-section canted wedges around the skylight perimeter:
-        ix, iz = SKY_HALF_W, SKY_HALF_D  # 6.80, 5.70 at bottom
-        # North/Rear reveal (-Z side):
-        # Bottom soffit ring from -wz to -iz at Y=9.00, canted inner face from (-ix, 9.00, -iz) to (-wx, 10.28, -wz)
-        cm.add_quad_g((-wx, y_soffit, -wz), (wx, y_soffit, -wz), (ix, y_soffit, -iz), (-ix, y_soffit, -iz))
-        cm.add_quad_g((-ix, y_soffit, -iz), (ix, y_soffit, -iz), (wx, y_roof_top, -wz), (-wx, y_roof_top, -wz))
-        # South/Entrance reveal (+Z side):
-        cm.add_quad_g((-ix, y_soffit, iz), (ix, y_soffit, iz), (wx, y_soffit, wz), (-wx, y_soffit, wz))
-        cm.add_quad_g((ix, y_soffit, iz), (-ix, y_soffit, iz), (-wx, y_roof_top, wz), (wx, y_roof_top, wz))
-        # West/Left reveal (-X side):
-        cm.add_quad_g((-wx, y_soffit, wz), (-ix, y_soffit, iz), (-ix, y_soffit, -iz), (-wx, y_soffit, -wz))
-        cm.add_quad_g((-ix, y_soffit, iz), (-wx, y_roof_top, wz), (-wx, y_roof_top, -wz), (-ix, y_soffit, -iz))
-        # East/Right reveal (+X side):
-        cm.add_quad_g((ix, y_soffit, iz), (wx, y_soffit, wz), (wx, y_soffit, -wz), (ix, y_soffit, -iz))
-        cm.add_quad_g((ix, y_soffit, -iz), (wx, y_roof_top, -wz), (wx, y_roof_top, wz), (ix, y_soffit, iz))
+        # B. Middle floating canopy core (Y = 9.072 m to 9.760 m) spanning [-cx, +cx] x [cz0, cz1] around [-bx, +bx] x [-bz, +bz]
+        cm.add_box_g(-cx, cx, y_slot_top, y_cove_top, cz0, -bz)
+        cm.add_box_g(-cx, cx, y_slot_top, y_cove_top, bz, cz1)
+        cm.add_box_g(-cx, -bx, y_slot_top, y_cove_top, -bz, bz)
+        cm.add_box_g(bx, cx, y_slot_top, y_cove_top, -bz, bz)
+        # Structural ceiling closure above rear wall & entrance portal
+        cm.add_box_g(-ox, ox, y_soffit, y_cove_top, oz0, cz0)
+        cm.add_box_g(-ox, ox, y_soffit, y_cove_top, cz1, oz1)
+
+        # C. Lower ceiling soffit layer (Y = 9.000 m to 9.072 m) subdivided cleanly around the U-shaped recessed track slot!
+        hs = TRACK_SLOT_W * 0.5                   # 0.038 m
+        tx0, tx1 = TRACK_X - hs, TRACK_X + hs     # 9.022, 9.098
+        tbz0, tbz1 = TRACK_BACK_Z - hs, TRACK_BACK_Z + hs  # -7.388, -7.312
+        tz_end = TRACK_Z_END + hs                 # +6.838
+        c_bev = 0.0025
+
+        cm.add_box_g(-cx, cx, y_soffit, y_slot_top, cz0, tbz0, bevel=c_bev)
+        cm.add_box_g(-cx, -tx1, y_soffit, y_slot_top, tbz0, cz1, bevel=c_bev)
+        cm.add_box_g(tx1, cx, y_soffit, y_slot_top, tbz0, cz1, bevel=c_bev)
+        cm.add_box_g(-tx1, tx1, y_soffit, y_slot_top, tz_end, cz1, bevel=c_bev)
+        cm.add_box_g(-tx0, tx0, y_soffit, y_slot_top, tbz1, -bz)
+        cm.add_box_g(-tx0, tx0, y_soffit, y_slot_top, bz, tz_end)
+        cm.add_box_g(-tx0, -bx, y_soffit, y_slot_top, -bz, bz)
+        cm.add_box_g(bx, tx0, y_soffit, y_slot_top, -bz, bz)
+
+        # D. Four closed, solid-manifold mitered hexahedra forming the 1.68 m deep canted skylight daylight well!
+        # North/Rear (-Z) canted wall solid
+        cm.add_hexahedron_g(
+            (-bx, y_soffit, -bz), (bx, y_soffit, -bz), (ix, y_soffit, -iz), (-ix, y_soffit, -iz),
+            (-bx, y_roof_top, -bz), (bx, y_roof_top, -bz), (wx, y_roof_top, -wz), (-wx, y_roof_top, -wz),
+        )
+        # South/Entrance (+Z) canted wall solid
+        cm.add_hexahedron_g(
+            (-ix, y_soffit, iz), (ix, y_soffit, iz), (bx, y_soffit, bz), (-bx, y_soffit, bz),
+            (-wx, y_roof_top, wz), (wx, y_roof_top, wz), (bx, y_roof_top, bz), (-bx, y_roof_top, bz),
+        )
+        # West/Left (-X) canted wall solid
+        cm.add_hexahedron_g(
+            (-bx, y_soffit, -bz), (-ix, y_soffit, -iz), (-ix, y_soffit, iz), (-bx, y_soffit, bz),
+            (-bx, y_roof_top, -bz), (-wx, y_roof_top, -wz), (-wx, y_roof_top, wz), (-bx, y_roof_top, bz),
+        )
+        # East/Right (+X) canted wall solid
+        cm.add_hexahedron_g(
+            (ix, y_soffit, -iz), (bx, y_soffit, -bz), (bx, y_soffit, bz), (ix, y_soffit, iz),
+            (wx, y_roof_top, -wz), (bx, y_roof_top, -bz), (bx, y_roof_top, bz), (wx, y_roof_top, wz),
+        )
 
     cm.finalize(arch_parent, col_arch, mat_ceiling)
 
-    # 2. Ceiling_Beams (3 slender transverse daylight-baffle structural beams at Z = -2.85, 0.00, +2.85 m)
-    cb = ArchMesh("Ceiling_Beams", uv_scale_meters=2.0)
-    beam_z_positions = (-2.85, 0.00, 2.85)
-    beam_y0 = 9.14
-    beam_y1 = 9.86
+    # 2. Ceiling_Beams: 4 slender, rhythmic transverse architectural skylight blades dividing the 11.80 m well
+    #    into 5 serene horizontal sky bays (Z = -3.54, -1.18, +1.18, +3.54 m), recessed mid-well (Y = 9.82 m to 10.60 m)!
+    cb = ArchMesh("Ceiling_Beams", uv_scale_meters=2.5)
+    beam_z_positions = (-3.54, -1.18, 1.18, 3.54)
+    beam_y0 = 9.82
+    beam_y1 = 10.60
     for bz in beam_z_positions:
         cb.add_tapered_beam_x(
-            -SKY_HALF_W - 0.05,
-            SKY_HALF_W + 0.05,
+            -SKY_HALF_W - 0.14,
+            SKY_HALF_W + 0.14,
             beam_y0,
             beam_y1,
             bz,
-            w_bottom=0.130,
-            w_top=0.164,
-            bevel=0.003 if detailed else 0.0,
+            w_bottom=0.068,
+            w_top=0.092,
+            bevel=0.0025 if detailed else 0.0,
         )
     cb.finalize(arch_parent, col_arch, mat_beam)
 
-    # 3. Skylight_Supports (3 longitudinal daylight-baffle fins at X = -3.40, 0.00, +3.40 m, cleanly segmented between primary beams)
+    # 3. Skylight_Supports: Structural bearing ledger channels along the skylight curb sides (X = +-6.90 m)
+    #    plus 2 ultra-slender 18 mm structural glass tension splines at X = -2.31, +2.31 m above the blades
+    #    so the 5 transverse skylight bays read as pure, uninterrupted sky planes from below!
     ss = ArchMesh("Skylight_Supports", uv_scale_meters=2.0)
-    sup_x_positions = (-3.40, 0.00, 3.40)
-    sup_hw = 0.046  # 92 mm wide refined architectural baffle fins
-    z_spans = [
-        (-SKY_HALF_D - 0.06, -2.85 - 0.082),
-        (-2.85 + 0.082, -0.082),
-        (0.082, 2.85 - 0.082),
-        (2.85 + 0.082, SKY_HALF_D + 0.06),
-    ]
+    wx = SKY_HALF_W + SKY_CANT   # 6.94 m
+    wz = SKY_HALF_D + SKY_CANT   # 6.04 m
+    # Perimeter longitudinal steel bearing channels at top of canted well
+    ss.add_box_g(-wx - 0.02, -wx + 0.032, beam_y1, SKY_WELL_TOP_Y, -wz, wz, bevel=0.0015 if detailed else 0.0)
+    ss.add_box_g(wx - 0.032, wx + 0.02, beam_y1, SKY_WELL_TOP_Y, -wz, wz, bevel=0.0015 if detailed else 0.0)
+    sup_x_positions = (-2.31, 2.31)
+    sup_hw = 0.009  # 18 mm low-profile structural glass spline
     for sx in sup_x_positions:
-        # Continuous upper purlin chord above primary beams (Y = 9.862 to 10.28)
         ss.add_box_g(
             sx - sup_hw,
             sx + sup_hw,
-            beam_y1 + 0.002,
+            SKY_WELL_TOP_Y - 0.045,
             SKY_WELL_TOP_Y,
-            -SKY_HALF_D - 0.06,
-            SKY_HALF_D + 0.06,
-            bevel=0.002 if detailed else 0.0,
+            -wz,
+            wz,
         )
-        # Lower notched baffle web segments between primary beams (Y = 9.52 to 9.860)
-        for z0, z1 in z_spans:
-            ss.add_box_g(
-                sx - sup_hw,
-                sx + sup_hw,
-                9.52,
-                beam_y1,
-                z0,
-                z1,
-                bevel=0.002 if detailed else 0.0,
-            )
     ss.finalize(sky_parent, col_sky, mat_beam)
 
-    # 4. Skylight_Frame (Powder-coated architectural aluminum curb & 4x4 glazing mullion grid)
+    # 4. Skylight_Frame: Powder-coated pale warm aluminum curb & 5-bay transverse glazing transoms + flush silicone joints
     sf = ArchMesh("Skylight_Frame", uv_scale_meters=1.5)
-    wx = SKY_HALF_W + SKY_CANT  # 6.88
-    wz = SKY_HALF_D + SKY_CANT  # 5.78
     curb_t = 0.22
-    mull_hw = 0.038  # 76 mm mullions
-    f_bev = 0.0025 if detailed else 0.0
+    mull_hw = 0.028              # 56 mm transverse mullions aligned directly over the 4 Ceiling_Beams
+    sil_hw = 0.008               # 16 mm flush structural-glazing silicone longitudinal joint
+    f_bev = 0.002 if detailed else 0.0
 
-    # Perimeter curb ring (Y = 10.28 to 10.52)
+    # Perimeter curb ring (Y = 10.68 to 10.90)
     sf.add_box_g(-wx - curb_t, wx + curb_t, SKY_WELL_TOP_Y, SKY_CURB_TOP_Y, -wz - curb_t, -wz + mull_hw, bevel=f_bev)
     sf.add_box_g(-wx - curb_t, wx + curb_t, SKY_WELL_TOP_Y, SKY_CURB_TOP_Y, wz - mull_hw, wz + curb_t, bevel=f_bev)
     sf.add_box_g(-wx - curb_t, -wx + mull_hw, SKY_WELL_TOP_Y, SKY_CURB_TOP_Y, -wz + mull_hw, wz - mull_hw, bevel=f_bev)
     sf.add_box_g(wx - mull_hw, wx + curb_t, SKY_WELL_TOP_Y, SKY_CURB_TOP_Y, -wz + mull_hw, wz - mull_hw, bevel=f_bev)
 
-    # 3 longitudinal mullions at X = -3.40, 0.00, +3.40 (Y = 10.28 to 10.44)
-    for sx in sup_x_positions:
-        sf.add_box_g(sx - mull_hw, sx + mull_hw, SKY_WELL_TOP_Y, SKY_FRAME_TOP_Y, -wz + mull_hw, wz - mull_hw, bevel=f_bev)
-
-    # 3 transverse transoms at Z = -2.85, 0.00, +2.85 segmented cleanly between longitudinal mullions
-    x_bay_edges = [-wx + mull_hw, -3.40 - mull_hw, -3.40 + mull_hw, -mull_hw, mull_hw, 3.40 - mull_hw, 3.40 + mull_hw, wx - mull_hw]
+    # 4 continuous transverse aluminum glazing transoms directly above the 4 Ceiling_Beams
     for bz in beam_z_positions:
-        for i in range(0, len(x_bay_edges), 2):
-            sf.add_box_g(x_bay_edges[i], x_bay_edges[i + 1], SKY_WELL_TOP_Y, SKY_FRAME_TOP_Y, bz - mull_hw, bz + mull_hw, bevel=f_bev)
+        sf.add_box_g(-wx + mull_hw, wx - mull_hw, SKY_WELL_TOP_Y, SKY_FRAME_TOP_Y, bz - mull_hw, bz + mull_hw, bevel=f_bev)
+
+    # Subtle 16 mm structural silicone joint strips between the 3 glass panes per bay
+    z_bay_edges = [
+        -wz + mull_hw,
+        -3.54 - mull_hw, -3.54 + mull_hw,
+        -1.18 - mull_hw, -1.18 + mull_hw,
+        1.18 - mull_hw, 1.18 + mull_hw,
+        3.54 - mull_hw, 3.54 + mull_hw,
+        wz - mull_hw,
+    ]
+    for sx in sup_x_positions:
+        for iz_i in range(0, len(z_bay_edges), 2):
+            sf.add_box_g(sx - sil_hw, sx + sil_hw, SKY_GLASS_Y0, SKY_GLASS_Y1 + 0.004, z_bay_edges[iz_i], z_bay_edges[iz_i + 1])
     sf.finalize(sky_parent, col_sky, mat_sky_frame)
 
-    # 5. Skylight_Glass (16 independent glazing panes combined into one semantic Skylight_Glass node)
-    sg = ArchMesh("Skylight_Glass", uv_scale_meters=2.0)
-    gx_cuts = [-wx + mull_hw, -3.40 - mull_hw, -3.40 + mull_hw, -mull_hw, mull_hw, 3.40 - mull_hw, 3.40 + mull_hw, wx - mull_hw]
-    gz_cuts = [-wz + mull_hw, -2.85 - mull_hw, -2.85 + mull_hw, -mull_hw, mull_hw, 2.85 - mull_hw, 2.85 + mull_hw, wz - mull_hw]
+    # 5. Skylight_Glass: 15 large laminated low-iron glazing panes combined into one semantic Skylight_Glass node
+    sg = ArchMesh("Skylight_Glass", uv_scale_meters=2.5)
+    gx_cuts = [-wx + mull_hw, -2.31 - sil_hw, -2.31 + sil_hw, 2.31 - sil_hw, 2.31 + sil_hw, wx - mull_hw]
+    gz_cuts = z_bay_edges
     inset = 0.002
-    for ix in range(0, len(gx_cuts), 2):
-        for iz in range(0, len(gz_cuts), 2):
+    for ix_i in range(0, len(gx_cuts), 2):
+        for iz_i in range(0, len(gz_cuts), 2):
             sg.add_box_g(
-                gx_cuts[ix] + inset,
-                gx_cuts[ix + 1] - inset,
+                gx_cuts[ix_i] + inset,
+                gx_cuts[ix_i + 1] - inset,
                 SKY_GLASS_Y0,
                 SKY_GLASS_Y1,
-                gz_cuts[iz] + inset,
-                gz_cuts[iz + 1] - inset,
+                gz_cuts[iz_i] + inset,
+                gz_cuts[iz_i + 1] - inset,
             )
     sg.finalize(sky_parent, col_sky, mat_sky_glass)
 
 
-def _add_spotlight_head(
+def _add_semi_recessed_spotlight(
     mesh: ArchMesh,
     mount_x: float,
     mount_z: float,
     target_g: Tuple[float, float, float],
 ) -> None:
-    """Minimal cylindrical architectural museum spotlight (ERCO Parscan style) hanging from recessed ceiling track."""
-    # Vertical stem adapter from recessed track (Y = 9.015) down to yoke pivot (Y = 8.87)
-    mesh.add_cylinder_segment_g((mount_x, 9.018, mount_z), (mount_x, 8.885, mount_z), 0.014, 0.014, segments=12)
-    # Yoke collar
-    mesh.add_box_g(mount_x - 0.028, mount_x + 0.028, 8.865, 8.890, mount_z - 0.016, mount_z + 0.016)
-    # Oriented cylindrical spotlight body aimed toward `target_g` (14 smooth-shaded segments at Y=8.85m)
-    pivot = Vector((mount_x, 8.855, mount_z))
+    """Compact semi-recessed architectural museum spotlight tucked cleanly inside the 72 mm ceiling slot."""
+    # Track adapter stem recessed inside slot (Y = 9.055 down to 8.985)
+    mesh.add_cylinder_segment_g((mount_x, 9.058, mount_z), (mount_x, 8.985, mount_z), 0.012, 0.012, segments=10)
+    # Compact cylindrical snoot head pivoted at Y = 8.970 (projects only ~45 mm below Y = 9.00 m soffit!)
+    pivot = Vector((mount_x, 8.970, mount_z))
     aim = (Vector(target_g) - pivot).normalized()
-    rear = pivot - aim * 0.075
-    front = pivot + aim * 0.105
-    baffle_in = pivot + aim * 0.082
+    rear = pivot - aim * 0.048
+    front = pivot + aim * 0.068
+    baffle_in = pivot + aim * 0.050
     mesh.add_cylinder_segment_g(
         (rear.x, rear.y, rear.z),
         (front.x, front.y, front.z),
-        0.046,
-        0.046,
+        0.032,
+        0.032,
         segments=14,
         cap_start=True,
         cap_end=False,
     )
-    # Recessed anti-glare snoot baffle cap inside front aperture
     mesh.add_cylinder_segment_g(
         (front.x, front.y, front.z),
         (baffle_in.x, baffle_in.y, baffle_in.z),
-        0.044,
-        0.036,
+        0.030,
+        0.024,
         segments=14,
         cap_start=False,
         cap_end=True,
@@ -939,40 +983,41 @@ def build_lighting_fixtures(
     mat_fixture: bpy.types.Material,
     detailed: bool,
 ) -> None:
-    # 1. Track_Back (Recessed track housing at Z = -6.50 m + 5 aimed spotlights)
+    hs = TRACK_SLOT_W * 0.5  # 0.038 m
+    # 1. Track_Back (Recessed track channel liner + 5 compact semi-recessed spotlights at Z = -7.20 m)
     tb = ArchMesh("Track_Back", uv_scale_meters=1.0)
-    tb.add_box_g(-TRACK_X - 0.030, TRACK_X + 0.030, 9.015, 9.051, TRACK_BACK_Z - 0.030, TRACK_BACK_Z + 0.030)
+    tb.add_box_g(-TRACK_X - hs, TRACK_X + hs, 9.040, 9.071, TRACK_BACK_Z - hs, TRACK_BACK_Z + hs)
     if detailed:
         for sx in (-6.40, -3.20, 0.00, 3.20, 6.40):
-            _add_spotlight_head(tb, sx, TRACK_BACK_Z, (sx, ARTWORK_CENTER_Y + 0.25, -HALF_D))
+            _add_semi_recessed_spotlight(tb, sx, TRACK_BACK_Z, (sx, ARTWORK_CENTER_Y + 0.25, -HALF_D))
     tb.finalize(fix_parent, col_fix, mat_fixture)
 
-    # 2. Track_Left (Recessed track housing at X = -8.80 m + 5 aimed spotlights)
+    # 2. Track_Left (Recessed track channel liner + 5 compact semi-recessed spotlights at X = -9.10 m)
     tl = ArchMesh("Track_Left", uv_scale_meters=1.0)
-    tl.add_box_g(-TRACK_X - 0.030, -TRACK_X + 0.030, 9.015, 9.051, TRACK_BACK_Z + 0.031, TRACK_Z_END + 0.030)
+    tl.add_box_g(-TRACK_X - hs, -TRACK_X + hs, 9.040, 9.071, TRACK_BACK_Z + hs + 0.001, TRACK_Z_END + hs)
     if detailed:
         for sz in (-5.20, -2.60, 0.00, 2.60, 5.20):
-            _add_spotlight_head(tl, -TRACK_X, sz, (-HALF_W, ARTWORK_CENTER_Y + 0.25, sz))
+            _add_semi_recessed_spotlight(tl, -TRACK_X, sz, (-HALF_W, ARTWORK_CENTER_Y + 0.25, sz))
     tl.finalize(fix_parent, col_fix, mat_fixture)
 
-    # 3. Track_Right (Recessed track housing at X = +8.80 m + 5 aimed spotlights)
+    # 3. Track_Right (Recessed track channel liner + 5 compact semi-recessed spotlights at X = +9.10 m)
     tr = ArchMesh("Track_Right", uv_scale_meters=1.0)
-    tr.add_box_g(TRACK_X - 0.030, TRACK_X + 0.030, 9.015, 9.051, TRACK_BACK_Z + 0.031, TRACK_Z_END + 0.030)
+    tr.add_box_g(TRACK_X - hs, TRACK_X + hs, 9.040, 9.071, TRACK_BACK_Z + hs + 0.001, TRACK_Z_END + hs)
     if detailed:
         for sz in (-5.20, -2.60, 0.00, 2.60, 5.20):
-            _add_spotlight_head(tr, TRACK_X, sz, (HALF_W, ARTWORK_CENTER_Y + 0.25, sz))
+            _add_semi_recessed_spotlight(tr, TRACK_X, sz, (HALF_W, ARTWORK_CENTER_Y + 0.25, sz))
     tr.finalize(fix_parent, col_fix, mat_fixture)
 
-    # 4. Recessed_Fixtures (10 discreet architectural downlight bezels along perimeter ceiling soffits)
+    # 4. Recessed_Fixtures (10 discreet trimless pinhole downlight cones recessed flush at Y = 9.000 m)
     rf = ArchMesh("Recessed_Fixtures", uv_scale_meters=0.5)
     downlight_coords = [
-        (-7.60, 7.60), (-3.80, 7.60), (3.80, 7.60), (7.60, 7.60),
-        (-10.40, -7.60), (10.40, -7.60),
-        (-10.40, -3.20), (-10.40, 3.20),
-        (10.40, -3.20), (10.40, 3.20),
+        (-7.40, 7.80), (-3.70, 7.80), (3.70, 7.80), (7.40, 7.80),
+        (-10.20, -7.80), (10.20, -7.80),
+        (-10.20, -3.20), (-10.20, 3.20),
+        (10.20, -3.20), (10.20, 3.20),
     ]
     for dx, dz in downlight_coords:
-        rf.add_cylinder_segment_g((dx, 8.997, dz), (dx, 9.035, dz), 0.058, 0.042, segments=16, cap_start=False, cap_end=True)
+        rf.add_cylinder_segment_g((dx, 8.999, dz), (dx, 9.042, dz), 0.040, 0.028, segments=14, cap_start=False, cap_end=True)
     rf.finalize(fix_parent, col_fix, mat_fixture)
 
 
@@ -983,7 +1028,7 @@ def build_lighting_fixtures(
 
 def _new_empty(
     name: str,
-    parent: bpy.types.Object,
+    parent: Optional[bpy.types.Object],
     col: bpy.types.Collection,
     world_mat_b: Matrix,
     size: float = 0.25,
@@ -991,7 +1036,8 @@ def _new_empty(
     obj = bpy.data.objects.new(name, None)
     obj.empty_display_type = "ARROWS"
     obj.empty_display_size = size
-    obj.parent = parent
+    if parent is not None:
+        obj.parent = parent
     obj.matrix_world = world_mat_b
     col.objects.link(obj)
     return obj
@@ -1019,14 +1065,12 @@ def build_all_anchors(
         art_obj["maxShiftedHeightMeters"] = ARTWORK_MAX_SHIFTED_H
         art_obj["recommendedClearanceMeters"] = spec["clearance"]
 
-        # Corresponding spotlight anchor at ceiling track aperture aimed at artwork center (local -Z = beam)
         tx, ty, tz = spec["track_pos"]
         lgt_m = look_at_gltf_basis((tx, ty, tz), (px, py, pz))
         lgt_obj = _new_empty(spec["light_name"], lgt_grp, col_anchors, lgt_m, 0.25)
         lgt_obj["anchorRole"] = "artwork-spotlight"
         lgt_obj["targetAnchor"] = spec["name"]
 
-        # Corresponding human-eye-level inspection anchor (Y = 1.60 m, `nav_dist` out along inward normal)
         nd = spec["nav_dist"]
         nx_pos = (px + ax_z[0] * nd, 1.60, pz + ax_z[2] * nd)
         nav_m = look_at_gltf_basis(nx_pos, (px, 1.55, pz))
@@ -1037,7 +1081,6 @@ def build_all_anchors(
     # 2. Additional Optional Floor Placement Anchors (Section 14)
     for pname, ppos, pfront in PLACEMENT_SPECS:
         up = (0.0, 1.0, 0.0)
-        # Local XY vertical/upright or floor anchor with +Y up and +Z facing `pfront`
         zf = Vector(pfront).normalized()
         xf = Vector(up).cross(zf).normalized()
         pm = make_gltf_basis_matrix(ppos, (xf.x, xf.y, xf.z), up, (zf.x, zf.y, zf.z))
@@ -1048,10 +1091,10 @@ def build_all_anchors(
     extra_lights = [
         ("Anchor_Light_Center_01", (-3.40, 8.95, 0.00), (0.00, 1.00, -0.60)),
         ("Anchor_Light_Center_02", (3.40, 8.95, 0.00), (0.00, 1.00, -0.60)),
-        ("Anchor_Light_Ambient_01", (-7.60, 8.95, 7.60), (-7.60, 0.00, 7.60)),
-        ("Anchor_Light_Ambient_02", (7.60, 8.95, 7.60), (7.60, 0.00, 7.60)),
-        ("Anchor_Light_Ambient_03", (-10.40, 8.95, -7.60), (-10.40, 0.00, -7.60)),
-        ("Anchor_Light_Ambient_04", (10.40, 8.95, -7.60), (10.40, 0.00, -7.60)),
+        ("Anchor_Light_Ambient_01", (-7.40, 8.95, 7.80), (-7.40, 0.00, 7.80)),
+        ("Anchor_Light_Ambient_02", (7.40, 8.95, 7.80), (7.40, 0.00, 7.80)),
+        ("Anchor_Light_Ambient_03", (-10.20, 8.95, -7.80), (-10.20, 0.00, -7.80)),
+        ("Anchor_Light_Ambient_04", (10.20, 8.95, -7.80), (10.20, 0.00, -7.80)),
     ]
     for lname, lpos, ltgt in extra_lights:
         lm = look_at_gltf_basis(lpos, ltgt)
@@ -1080,12 +1123,14 @@ def build_all_anchors(
 def ensure_pbr_textures(force: bool = False) -> Dict[str, Path]:
     """
     Deterministically synthesize coherent, strictly tileable PBR texture maps in `TEX_DIR`.
-    Every surface uses a periodic multi-octave Fourier / value-noise height field in millimeters,
-    deriving OpenGL (+Y) tangent-space normal maps and spatially aligned roughness + neutral
-    near-white variation maps so runtime `material.color` tinting works cleanly.
+    Derived from physical band-limited periodic height & trowel-burnish fields:
+      - OpenGL (+Y) tangent-space normal maps
+      - Spatially aligned roughness maps (including authentic power-troweled satin concrete sheen!)
+      - Strictly neutral near-white mineral clouding basecolor maps so `material.color` recoloring works cleanly.
     """
     TEX_DIR.mkdir(parents=True, exist_ok=True)
     expected = {
+        "plaster_basecolor": TEX_DIR / "wall_plaster_basecolor.png",
         "plaster_normal": TEX_DIR / "wall_plaster_normal.png",
         "plaster_roughness": TEX_DIR / "wall_plaster_roughness.png",
         "concrete_basecolor": TEX_DIR / "floor_concrete_basecolor.png",
@@ -1101,16 +1146,14 @@ def ensure_pbr_textures(force: bool = False) -> Dict[str, Path]:
     import struct as pystruct
 
     def write_png_u8(path: Path, arr: "np.ndarray") -> None:
-        """Lossless 8-bit grayscale or RGB PNG writer using stdlib zlib."""
         arr = np.clip(arr, 0, 255).astype(np.uint8)
         if arr.ndim == 2:
             h, w = arr.shape
             color_type = 0
-            raw_rows = b"".join(b"\x00" + arr[y].tobytes() for y in range(h))
         else:
             h, w, c = arr.shape
             color_type = 2 if c == 3 else 6
-            raw_rows = b"".join(b"\x00" + arr[y].tobytes() for y in range(h))
+        raw_rows = b"".join(b"\x00" + arr[y].tobytes() for y in range(h))
 
         def chunk(tag: bytes, data: bytes) -> bytes:
             return (
@@ -1130,7 +1173,6 @@ def ensure_pbr_textures(force: bool = False) -> Dict[str, Path]:
         path.write_bytes(png_bytes)
 
     def periodic_fbm(res: int, seed: int, freq_weights: Sequence[Tuple[int, float]]) -> "np.ndarray":
-        """Exact seamless 2D periodic fractal field via band-limited spectral synthesis."""
         rng = np.random.default_rng(seed)
         spec = np.zeros((res, res), dtype=np.complex128)
         ky = np.fft.fftfreq(res) * res
@@ -1139,11 +1181,11 @@ def ensure_pbr_textures(force: bool = False) -> Dict[str, Path]:
         KR = np.sqrt(KX * KX + KY * KY)
 
         for k_center, weight in freq_weights:
-            bw = max(1.2, k_center * 0.45)
+            bw = max(1.1, k_center * 0.45)
             env = np.exp(-0.5 * ((KR - k_center) / bw) ** 2)
             env[0, 0] = 0.0
             phase = rng.uniform(0.0, 2.0 * np.pi, size=(res, res))
-            amp = rng.normal(1.0, 0.25, size=(res, res))
+            amp = rng.normal(1.0, 0.24, size=(res, res))
             spec += weight * env * amp * (np.cos(phase) + 1j * np.sin(phase))
 
         field = np.fft.ifft2(spec).real
@@ -1153,15 +1195,13 @@ def ensure_pbr_textures(force: bool = False) -> Dict[str, Path]:
         return field
 
     def height_to_normal_rgb(height: "np.ndarray", strength: float) -> "np.ndarray":
-        """Convert periodic height field to OpenGL (+Y) tangent-space RGB normal map."""
         dh_dx = (np.roll(height, -1, axis=1) - np.roll(height, 1, axis=1)) * 0.5 * strength
-        # Row index increases downward in PNG; OpenGL V increases upward (+Y), so +dH/dV = -(row+1 - row-1)
         dh_dv = -(np.roll(height, -1, axis=0) - np.roll(height, 1, axis=0)) * 0.5 * strength
         nx = -dh_dx
         ny = -dh_dv
         nz = np.ones_like(height)
         inv_len = 1.0 / np.sqrt(nx * nx + ny * ny + nz * nz)
-        rgb = np.stack(
+        return np.stack(
             [
                 (nx * inv_len * 0.5 + 0.5) * 255.0,
                 (ny * inv_len * 0.5 + 0.5) * 255.0,
@@ -1169,62 +1209,64 @@ def ensure_pbr_textures(force: bool = False) -> Dict[str, Path]:
             ],
             axis=-1,
         )
-        return rgb
-
-    # 1. Museum Wall Plaster (1024x1024 lossless micro-normal, 512x512 band-limited roughness; 3.2 m repeat)
-    res_p = 1024
-    h_plaster = periodic_fbm(
-        res_p,
-        seed=101,
-        freq_weights=[(3, 0.30), (7, 0.35), (16, 0.45), (38, 0.55), (85, 0.65), (180, 0.50)],
-    )
-    n_plaster = height_to_normal_rgb(h_plaster, strength=0.14)
-    # Downsample coherent roughness 2x2 box-average to 512x512 (matte mineral plaster ~0.82 - 0.92)
-    h_plaster_512 = 0.25 * (
-        h_plaster[0::2, 0::2] + h_plaster[1::2, 0::2] + h_plaster[0::2, 1::2] + h_plaster[1::2, 1::2]
-    )
-    r_plaster = (0.87 - 0.025 * np.tanh(h_plaster_512 * 0.8)) * 255.0
-    write_png_u8(expected["plaster_normal"], n_plaster)
-    write_png_u8(expected["plaster_roughness"], r_plaster)
-
-    # 2. Honed Architectural Concrete Floor (1024x1024 lossless normal, 512x512 coherent basecolor & roughness; 3.0 m repeat)
-    res_c = 1024
-    h_cloud = periodic_fbm(res_c, seed=202, freq_weights=[(1, 0.65), (2, 0.50), (4, 0.30), (9, 0.16)])
-    h_micro = periodic_fbm(res_c, seed=203, freq_weights=[(45, 0.40), (105, 0.50), (210, 0.45)])
-    # Subtle micro-pores (honed limestone/concrete pinholes, very restrained)
-    pores = np.minimum(0.0, h_micro + 1.75) * 0.30
-    h_conc = 0.55 * h_cloud + 0.28 * h_micro + pores
-    n_conc = height_to_normal_rgb(h_conc, strength=0.10)
 
     def box2x2(a: "np.ndarray") -> "np.ndarray":
         return 0.25 * (a[0::2, 0::2] + a[1::2, 0::2] + a[0::2, 1::2] + a[1::2, 1::2])
 
-    hc512 = box2x2(h_cloud)
-    hm512 = box2x2(h_micro)
-    po512 = box2x2(pores)
+    # 1. Museum Lime-Mineral Wall Plaster (4.80 m UV repeat: subtle organic tonal clouding + fine matte grain)
+    res_p = 1024
+    h_p_macro = periodic_fbm(res_p, seed=111, freq_weights=[(1, 0.70), (2, 0.55), (5, 0.35), (12, 0.25)])
+    h_p_micro = periodic_fbm(res_p, seed=112, freq_weights=[(32, 0.45), (78, 0.55), (175, 0.50)])
+    h_plaster = 0.45 * h_p_macro + 0.55 * h_p_micro
+    n_plaster = height_to_normal_rgb(h_plaster, strength=0.11)
 
-    # Neutral near-white variation [238..252] with subtle warm-cool mineral tone (~1.2% tint delta)
-    # so `Mat_Floor_Concrete` baseColorFactor (#AEAAA1) produces refined warm neutral gray AND remains recolorable!
-    lum = 0.960 + 0.024 * np.tanh(0.70 * hc512 + 0.18 * hm512)
-    warm = 0.005 * np.tanh(hc512)
-    c_rgb = np.stack(
-        [
-            (lum + warm) * 255.0,
-            lum * 255.0,
-            (lum - warm * 1.1) * 255.0,
-        ],
-        axis=-1,
-    )
-    # Restrained satin honed concrete roughness: 0.44 on honed plateaus to 0.56 in softer mineral zones (never mirror-like!)
-    r_conc = (0.49 - 0.042 * np.tanh(0.7 * hc512 + 0.4 * hm512) - 0.05 * po512) * 255.0
+    hm512 = box2x2(h_p_macro)
+    hi512 = box2x2(h_p_micro)
+    # Neutral near-white mineral clouding [249..255] so walls have subtle lime-mineral depth without mottling
+    p_lum = 0.987 + 0.008 * np.tanh(0.70 * hm512 + 0.30 * hi512)
+    p_warm = 0.0015 * np.tanh(hm512)
+    p_rgb = np.stack([(p_lum + p_warm) * 255.0, p_lum * 255.0, (p_lum - p_warm) * 255.0], axis=-1)
+    r_plaster = (0.86 - 0.035 * np.tanh(0.65 * hm512 + 0.35 * hi512)) * 255.0
+
+    write_png_u8(expected["plaster_basecolor"], p_rgb)
+    write_png_u8(expected["plaster_normal"], n_plaster)
+    write_png_u8(expected["plaster_roughness"], r_plaster)
+
+    # 2. Power-Troweled Honed Architectural Concrete Floor (4.80 m UV repeat: silky satin Fresnel reflections!)
+    res_c = 1024
+    h_cloud = periodic_fbm(res_c, seed=212, freq_weights=[(1, 0.75), (2, 0.55), (4, 0.35), (8, 0.20)])
+    h_trowel = periodic_fbm(res_c, seed=213, freq_weights=[(3, 0.55), (7, 0.45), (18, 0.30)])
+    h_micro = periodic_fbm(res_c, seed=214, freq_weights=[(48, 0.35), (112, 0.42), (220, 0.38)])
+    pores = np.minimum(0.0, h_micro + 1.85) * 0.22
+    h_conc = 0.55 * h_cloud + 0.25 * h_trowel + 0.20 * h_micro + pores
+    n_conc = height_to_normal_rgb(h_conc, strength=0.075)
+
+    hc512 = box2x2(h_cloud)
+    ht512 = box2x2(h_trowel)
+    hm512_c = box2x2(h_micro)
+
+    # Neutral near-white mineral clouding [235..253] multiplied by baseColorFactor (#B4B0A8)
+    c_lum = 0.958 + 0.030 * np.tanh(0.65 * hc512 + 0.25 * ht512 + 0.15 * hm512_c)
+    c_warm = 0.0045 * np.tanh(hc512 - 0.3 * ht512)
+    c_rgb = np.stack([(c_lum + c_warm) * 255.0, c_lum * 255.0, (c_lum - c_warm * 1.1) * 255.0], axis=-1)
+
+    # Authentic power-troweled museum concrete roughness (1024x1024): 0.245 on burnished trowel sweeps
+    # to 0.375 in matte mineral clouds (mean ~0.305) -> soft, realistic skylight & artwork floor reflections!
+    r_conc = (
+        0.305
+        - 0.052 * np.tanh(0.60 * h_trowel + 0.45 * h_cloud)
+        + 0.018 * np.tanh(h_micro)
+        - 0.045 * pores
+    ) * 255.0
+
     write_png_u8(expected["concrete_basecolor"], c_rgb)
     write_png_u8(expected["concrete_normal"], n_conc)
     write_png_u8(expected["concrete_roughness"], r_conc)
 
-    # 3. Acoustic Mineral Ceiling Plaster (512 x 512, fine matte acoustic plaster micro-texture)
+    # 3. Warm Acoustic Mineral Ceiling Plaster (4.20 m UV repeat)
     res_ceil = 512
-    h_ceil = periodic_fbm(res_ceil, seed=303, freq_weights=[(8, 0.30), (24, 0.45), (64, 0.65), (140, 0.60)])
-    n_ceil = height_to_normal_rgb(h_ceil, strength=0.12)
+    h_ceil = periodic_fbm(res_ceil, seed=313, freq_weights=[(2, 0.40), (8, 0.35), (26, 0.45), (72, 0.55), (150, 0.50)])
+    n_ceil = height_to_normal_rgb(h_ceil, strength=0.11)
     write_png_u8(expected["ceiling_normal"], n_ceil)
 
     return expected
@@ -1259,7 +1301,7 @@ def _ensure_nodes(id_block) -> bpy.types.NodeTree:
     return id_block.node_tree
 
 
-def create_materials(clay_mode: bool) -> Dict[str, bpy.types.Material]:
+def create_materials(clay_mode: bool, force_textures: bool = False) -> Dict[str, bpy.types.Material]:
     """Create the 9 stable semantic material slots."""
     names = [
         "Mat_Wall_Plaster",
@@ -1280,12 +1322,11 @@ def create_materials(clay_mode: bool) -> Dict[str, bpy.types.Material]:
             nt = _ensure_nodes(m)
             bsdf = nt.nodes.get("Principled BSDF")
             if nm == "Mat_Skylight_Glass":
-                # Transparent clay glass so daylight illuminates the clay interior cleanly
-                m.blend_method = "BLEND" if hasattr(m, "blend_method") else "OPAQUE"
-                bsdf.inputs["Base Color"].default_value = hex_rgba("#EAECEF", 0.08)
-                bsdf.inputs["Alpha"].default_value = 0.06
-                bsdf.inputs["Roughness"].default_value = 0.10
-                # Let shadow rays pass cleanly through glass in Cycles
+                if hasattr(m, "surface_render_method"):
+                    m.surface_render_method = "BLENDED"
+                bsdf.inputs["Base Color"].default_value = hex_rgba("#EAECEF", 0.06)
+                bsdf.inputs["Alpha"].default_value = 0.05
+                bsdf.inputs["Roughness"].default_value = 0.08
                 lp = nt.nodes.new("ShaderNodeLightPath")
                 tr = nt.nodes.new("ShaderNodeBsdfTransparent")
                 mx = nt.nodes.new("ShaderNodeMixShader")
@@ -1295,15 +1336,14 @@ def create_materials(clay_mode: bool) -> Dict[str, bpy.types.Material]:
                 nt.links.new(tr.outputs["BSDF"], mx.inputs[2])
                 nt.links.new(mx.outputs["Shader"], out.inputs["Surface"])
             else:
-                # Warm architectural limestone-clay study palette
-                tone = "#DCD7CE" if nm != "Mat_Floor_Concrete" else "#CFC9BE"
+                tone = "#DFDAD0" if nm != "Mat_Floor_Concrete" else "#D0C9BD"
                 bsdf.inputs["Base Color"].default_value = hex_rgba(tone)
-                bsdf.inputs["Roughness"].default_value = 0.85
+                bsdf.inputs["Roughness"].default_value = 0.84
                 bsdf.inputs["Metallic"].default_value = 0.0
             mats[nm] = m
         return mats
 
-    tex = ensure_pbr_textures()
+    tex = ensure_pbr_textures(force=force_textures)
 
     def make_textured_pbr(
         name: str,
@@ -1313,7 +1353,8 @@ def create_materials(clay_mode: bool) -> Dict[str, bpy.types.Material]:
         base_map: Optional[Path] = None,
         rough_map: Optional[Path] = None,
         norm_map: Optional[Path] = None,
-        norm_strength: float = 0.35,
+        norm_strength: float = 0.25,
+        ior: float = 1.48,
     ) -> bpy.types.Material:
         m = bpy.data.materials.new(name)
         nt = _ensure_nodes(m)
@@ -1322,16 +1363,11 @@ def create_materials(clay_mode: bool) -> Dict[str, bpy.types.Material]:
         bsdf.inputs["Metallic"].default_value = metallic
         bsdf.inputs["Roughness"].default_value = roughness
         if "IOR" in bsdf.inputs:
-            bsdf.inputs["IOR"].default_value = 1.48
+            bsdf.inputs["IOR"].default_value = ior
 
         if base_map is not None:
             tex_c = nt.nodes.new("ShaderNodeTexImage")
             tex_c.image = _load_img(base_map, non_color=False)
-            # Multiply neutral near-white map by `base_hex` factor so glTF exports both texture + baseColorFactor!
-            # Wait: Blender's glTF exporter exports BOTH `baseColorTexture` and `baseColorFactor` cleanly when
-            # `Mix (Multiply)` or direct `Base Color`? Let's use `MixColor (MULTIPLY, Factor=1.0)` between
-            # `tex_c` (A) and `RGB(base_hex)` (B), which Blender 5.x glTF exporter recognizes natively as
-            # `baseColorTexture` * `baseColorFactor`!
             mix_n = nt.nodes.new("ShaderNodeMix")
             mix_n.data_type = "RGBA"
             mix_n.blend_type = "MULTIPLY"
@@ -1355,58 +1391,63 @@ def create_materials(clay_mode: bool) -> Dict[str, bpy.types.Material]:
 
         return m
 
-    # 1. Mat_Wall_Plaster — Warm gallery lime-mineral plaster (#F3EFE8), matte, zero plastic sheen
+    # 1. Mat_Wall_Plaster — Warm museum lime-mineral plaster (#F3EFE7), matte with subtle clouding
     mats["Mat_Wall_Plaster"] = make_textured_pbr(
         "Mat_Wall_Plaster",
-        base_hex="#F3EFE8",
+        base_hex="#F3EFE7",
         metallic=0.0,
-        roughness=0.87,
+        roughness=0.86,
+        base_map=tex["plaster_basecolor"],
         rough_map=tex["plaster_roughness"],
         norm_map=tex["plaster_normal"],
-        norm_strength=0.32,
+        norm_strength=0.22,
+        ior=1.46,
     )
 
-    # 2. Mat_Floor_Concrete — Honed architectural warm-gray concrete/limestone (#AEAAA1), restrained satin sheen
+    # 2. Mat_Floor_Concrete — Power-troweled honed architectural concrete (#B4B0A8) with calm satin reflections
     mats["Mat_Floor_Concrete"] = make_textured_pbr(
         "Mat_Floor_Concrete",
-        base_hex="#AEAAA1",
+        base_hex="#B4B0A8",
         metallic=0.0,
-        roughness=0.49,
+        roughness=0.30,
         base_map=tex["concrete_basecolor"],
         rough_map=tex["concrete_roughness"],
         norm_map=tex["concrete_normal"],
-        norm_strength=0.28,
+        norm_strength=0.14,
+        ior=1.52,
     )
 
-    # 3. Mat_Ceiling — Calm warm-neutral acoustic mineral ceiling (#ECE9E2)
+    # 3. Mat_Ceiling — Serene warm limestone-mineral floating canopy soffit (#E9E4DA) for subtle tectonic contrast
     mats["Mat_Ceiling"] = make_textured_pbr(
         "Mat_Ceiling",
-        base_hex="#ECE9E2",
+        base_hex="#E9E4DA",
         metallic=0.0,
-        roughness=0.91,
+        roughness=0.88,
+        base_map=tex["plaster_basecolor"],
         norm_map=tex["ceiling_normal"],
-        norm_strength=0.25,
+        norm_strength=0.20,
+        ior=1.46,
     )
 
-    # 4. Mat_Structural_Beam — Architectural matte painted steel/mineral louver finish (#EFECE5)
+    # 4. Mat_Structural_Beam — Crisp warm-white painted architectural skylight blades (#F5F2EB)
     mats["Mat_Structural_Beam"] = make_textured_pbr(
         "Mat_Structural_Beam",
-        base_hex="#EFECE5",
-        metallic=0.06,
-        roughness=0.64,
+        base_hex="#F5F2EB",
+        metallic=0.08,
+        roughness=0.56,
         norm_map=tex["ceiling_normal"],
-        norm_strength=0.14,
+        norm_strength=0.10,
     )
 
-    # 5. Mat_Skylight_Frame — Powder-coated warm silver-gray aluminum (#D6D3CC)
+    # 5. Mat_Skylight_Frame — Powder-coated pale warm aluminum mullions (#DCD8D0)
     mats["Mat_Skylight_Frame"] = make_textured_pbr(
         "Mat_Skylight_Frame",
-        base_hex="#D6D3CC",
-        metallic=0.38,
-        roughness=0.40,
+        base_hex="#DCD8D0",
+        metallic=0.36,
+        roughness=0.38,
     )
 
-    # 6. Mat_Skylight_Glass — Clear low-iron architectural glazing with real-time glTF BLEND fallback
+    # 6. Mat_Skylight_Glass — Clear low-iron architectural glazing with real-time glTF BLEND compatibility
     mg = bpy.data.materials.new("Mat_Skylight_Glass")
     nt = _ensure_nodes(mg)
     if hasattr(mg, "surface_render_method"):
@@ -1414,43 +1455,43 @@ def create_materials(clay_mode: bool) -> Dict[str, bpy.types.Material]:
     elif hasattr(mg, "blend_method"):
         mg.blend_method = "BLEND"
     bsdf = nt.nodes.get("Principled BSDF")
-    bsdf.inputs["Base Color"].default_value = hex_rgba("#EEF5F8", 1.0)
+    bsdf.inputs["Base Color"].default_value = hex_rgba("#EEF5FA", 1.0)
     bsdf.inputs["Metallic"].default_value = 0.04
     bsdf.inputs["Roughness"].default_value = 0.07
-    bsdf.inputs["Alpha"].default_value = 0.16
+    bsdf.inputs["Alpha"].default_value = 0.14
     if "IOR" in bsdf.inputs:
         bsdf.inputs["IOR"].default_value = 1.52
     mats["Mat_Skylight_Glass"] = mg
 
-    # 7. Mat_Entrance_Frame — Powder-coated dark warm architectural bronze-charcoal (#383532)
+    # 7. Mat_Entrance_Frame — Anodized warm pewter-bronze architectural portal liner (#524E49)
     mats["Mat_Entrance_Frame"] = make_textured_pbr(
         "Mat_Entrance_Frame",
-        base_hex="#383532",
-        metallic=0.45,
+        base_hex="#524E49",
+        metallic=0.42,
         roughness=0.38,
     )
 
-    # 8. Mat_Lighting_Fixture — Matte architectural graphite spotlight & track housing (#282726)
+    # 8. Mat_Lighting_Fixture — Refined architectural dark graphite track & semi-recessed spotlight housing (#302E2C)
     mats["Mat_Lighting_Fixture"] = make_textured_pbr(
         "Mat_Lighting_Fixture",
-        base_hex="#282726",
-        metallic=0.35,
-        roughness=0.45,
+        base_hex="#302E2C",
+        metallic=0.38,
+        roughness=0.42,
     )
 
-    # 9. Mat_Trim — Deep architectural shadow-gap reveal channel finish (#222120)
+    # 9. Mat_Trim — Subtle recessed shadow-gap reveal channel liner (#3C3935)
     mats["Mat_Trim"] = make_textured_pbr(
         "Mat_Trim",
-        base_hex="#222120",
-        metallic=0.28,
-        roughness=0.55,
+        base_hex="#3C3935",
+        metallic=0.25,
+        roughness=0.52,
     )
 
     return mats
 
 
 # ---------------------------------------------------------------------------
-#Cycles Render Engine, Lighting Scenarios (A, B, C), & Temporary Exhibition (Stage E)
+# Cycles Render Engine, Lighting Scenarios (A, B, C), & Temporary Exhibition (Stage E)
 # ---------------------------------------------------------------------------
 
 
@@ -1459,13 +1500,12 @@ def configure_cycles(samples: int = 96, res_x: int = 1600, res_y: int = 1000) ->
     scene.render.engine = "CYCLES"
     scene.cycles.samples = samples
     scene.cycles.use_denoising = True
-    scene.cycles.max_bounces = 8
-    scene.cycles.diffuse_bounces = 4
-    scene.cycles.glossy_bounces = 3
+    scene.cycles.max_bounces = 10
+    scene.cycles.diffuse_bounces = 5
+    scene.cycles.glossy_bounces = 4
     scene.cycles.transmission_bounces = 4
     scene.cycles.transparent_max_bounces = 8
 
-    # Enable Apple Metal GPU acceleration when available
     try:
         prefs = bpy.context.preferences.addons["cycles"].preferences
         prefs.compute_device_type = "METAL"
@@ -1481,7 +1521,7 @@ def configure_cycles(samples: int = 96, res_x: int = 1600, res_y: int = 1000) ->
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.view_settings.view_transform = "AgX"
-    scene.view_settings.look = "AgX - Medium High Contrast"
+    scene.view_settings.look = "AgX - Base Contrast"
     scene.view_settings.exposure = 0.0
 
 
@@ -1492,29 +1532,30 @@ def setup_lighting_scenario(
     """
     Configure Blender authoring lighting scenario in `Studio_Preview` collection (excluded from GLB).
     Scenarios:
-      - 'soft_daylight' : Scenario A — diffused overcast/bright sky dome + soft skylight fill
-      - 'direct_sun'    : Scenario B — crisp angled sun beams through the 4x4 skylight coffer + sky dome
-      - 'evening'       : Scenario C — twilight sky + warm 3000K gallery track spotlights on all 9 anchors
+      - 'soft_daylight' : Scenario A — luminous diffused skylight + perimeter cove daylight wash
+      - 'direct_sun'    : Scenario B — sculpted angled sunlight through the 5-bay skylight coffer + sky fill
+      - 'evening'       : Scenario C — twilight sky + warm perimeter cove grazing + 3000K gallery spotlights
     """
-    # Clear previous lights/backdrop in Studio_Preview
     for obj in list(col_studio.objects):
         if obj.type in ("LIGHT", "MESH") and obj.name.startswith("Studio_"):
             bpy.data.objects.remove(obj, do_unlink=True)
 
-    # Make Skylight_Glass invisible to shadow rays in Cycles so sunlight casts crisp architectural shadows
     glass_obj = bpy.data.objects.get("Skylight_Glass")
     if glass_obj is not None and hasattr(glass_obj, "visible_shadow"):
         glass_obj.visible_shadow = False
 
-    # Subtle exterior arrival court bounce plane beyond entrance (+Z = +16 m) so views toward entrance feel real
-    court = ArchMesh("Studio_Exterior_Court", uv_scale_meters=4.0)
-    court.add_box_g(-16.0, 16.0, -0.32, 0.0, HALF_D + PORTAL_DEPTH, 19.0)
-    court.add_box_g(-16.0, 16.0, 0.0, 9.2, 18.8, 19.2)
-    mat_court = bpy.data.materials.get("Studio_Mat_Court") or bpy.data.materials.new("Studio_Mat_Court")
-    _ensure_nodes(mat_court)
-    mat_court.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = hex_rgba("#DDD8CF")
-    mat_court.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.90
-    court.finalize(None, col_studio, mat_court)
+    # Serene adjacent museum foyer / vestibule beyond the +Z entrance portal (authoring backdrop only)
+    foyer_floor = ArchMesh("Studio_Foyer_Floor", uv_scale_meters=4.8)
+    foyer_floor.add_box_g(-14.0, 14.0, -0.32, 0.0, HALF_D + PORTAL_DEPTH, 21.0)
+    mat_floor_ref = bpy.data.materials.get("Mat_Floor_Concrete")
+    foyer_floor.finalize(None, col_studio, mat_floor_ref)
+
+    foyer_walls = ArchMesh("Studio_Foyer_Walls", uv_scale_meters=4.8)
+    foyer_walls.add_box_g(-14.0, 14.0, 0.0, 9.6, 20.6, 21.0)
+    foyer_walls.add_box_g(-14.0, -9.5, 0.0, 9.6, HALF_D + PORTAL_DEPTH, 20.6)
+    foyer_walls.add_box_g(9.5, 14.0, 0.0, 9.6, HALF_D + PORTAL_DEPTH, 20.6)
+    mat_wall_ref = bpy.data.materials.get("Mat_Wall_Plaster")
+    foyer_walls.finalize(None, col_studio, mat_wall_ref)
 
     world = bpy.context.scene.world or bpy.data.worlds.new("Museum_World")
     bpy.context.scene.world = world
@@ -1532,6 +1573,8 @@ def setup_lighting_scenario(
         size_y: float,
         color_hex: str,
         spread_deg: float = 135.0,
+        camera_visible: bool = False,
+        up_g: Tuple[float, float, float] = (0.0, 1.0, 0.0),
     ) -> None:
         ld = bpy.data.lights.new(name, type="AREA")
         ld.shape = "RECTANGLE"
@@ -1542,7 +1585,9 @@ def setup_lighting_scenario(
         if hasattr(ld, "spread"):
             ld.spread = math.radians(spread_deg)
         lo = bpy.data.objects.new(name, ld)
-        lo.matrix_world = look_at_blender_native(pos_g, target_g)
+        lo.matrix_world = look_at_blender_native(pos_g, target_g, up_g=up_g)
+        if hasattr(lo, "visible_camera"):
+            lo.visible_camera = camera_visible
         col_studio.objects.link(lo)
 
     def add_spot_light(
@@ -1565,122 +1610,98 @@ def setup_lighting_scenario(
         lo.matrix_world = look_at_blender_native(pos_g, target_g)
         col_studio.objects.link(lo)
 
-    def _configure_sky(sky_node, elev_deg: float, rot_deg: float) -> None:
-        for candidate in ("MULTIPLE_SCATTERING", "SINGLE_SCATTERING", "NISHITA", "HOSEK_WILKIE"):
-            try:
-                sky_node.sky_type = candidate
-                break
-            except TypeError:
-                continue
-        if hasattr(sky_node, "sun_disc"):
-            sky_node.sun_disc = False
-        if hasattr(sky_node, "sun_elevation"):
-            sky_node.sun_elevation = math.radians(elev_deg)
-        if hasattr(sky_node, "sun_rotation"):
-            sky_node.sun_rotation = math.radians(rot_deg)
+    def add_perimeter_cove_grazers(energy_side: float, color_hex: str) -> None:
+        """Concealed natural daylight / evening grazing wash inside the Left & Right 680 mm architectural coves."""
+        # Pass `up_g=(1.0, 0.0, 0.0)` so local +X (`size_x = 17.4 m`) aligns strictly with world Z along the side walls!
+        add_area_light("Studio_Cove_Left", (-11.66, 9.68, 0.0), (-11.86, 2.0, 0.0), energy_side, 17.4, 0.48, color_hex, spread_deg=140.0, up_g=(1.0, 0.0, 0.0))
+        add_area_light("Studio_Cove_Right", (11.66, 9.68, 0.0), (11.86, 2.0, 0.0), energy_side, 17.4, 0.48, color_hex, spread_deg=140.0, up_g=(-1.0, 0.0, 0.0))
 
     if scenario == "soft_daylight":
-        sky = wnt.nodes.new("ShaderNodeTexSky")
-        _configure_sky(sky, 58.0, 28.0)
-        bg.inputs["Strength"].default_value = 0.11
-        wnt.links.new(sky.outputs["Color"], bg.inputs["Color"])
+        # Luminous calm overcast-zenith sky visible overhead through the 5-bay skylight coffer!
+        bg.inputs["Color"].default_value = hex_rgba("#EBF1F8")
+        bg.inputs["Strength"].default_value = 2.40
         wnt.links.new(bg.outputs["Background"], wout.inputs["Surface"])
 
-        # Large soft sky diffuser panel directly above skylight glazing (Y = 11.2 m)
+        # Primary diffused sky plane above skylight glazing (Y = 11.35 m)
         add_area_light(
             "Studio_Skylight_Soft_Dome",
-            (0.0, 11.20, 0.0),
-            (0.0, 0.0, -0.5),
-            energy=3400.0,
-            size_x=13.4,
-            size_y=11.2,
-            color_hex="#F7F8FA",
-            spread_deg=130.0,
+            (0.0, 11.35, 0.0),
+            (0.0, 0.0, -0.4),
+            energy=3800.0,
+            size_x=13.6,
+            size_y=11.8,
+            color_hex="#F7F9FC",
+            spread_deg=134.0,
         )
-        # Gentle exterior arrival daylight outside entrance portal
-        add_area_light(
-            "Studio_Portal_Daylight",
-            (0.0, 4.2, 13.5),
-            (0.0, 1.6, 2.0),
-            energy=650.0,
-            size_x=7.0,
-            size_y=4.5,
-            color_hex="#F8F6F0",
-            spread_deg=120.0,
-        )
-        bpy.context.scene.view_settings.exposure = -0.15
+        # Soft side-cove clerestory sky bounce washing gently down Wall_Left and Wall_Right!
+        add_perimeter_cove_grazers(energy_side=680.0, color_hex="#F4F6FA")
+        # Bright sunlit foyer beyond the +Z entrance portal
+        add_area_light("Studio_Foyer_Daylight", (0.0, 8.8, 15.2), (0.0, 0.0, 11.5), energy=2200.0, size_x=12.0, size_y=6.0, color_hex="#F9F7F1", spread_deg=135.0)
+        bpy.context.scene.view_settings.exposure = -0.22
 
     elif scenario == "direct_sun":
-        sky = wnt.nodes.new("ShaderNodeTexSky")
-        _configure_sky(sky, 52.0, 34.0)
-        bg.inputs["Strength"].default_value = 0.08
-        wnt.links.new(sky.outputs["Color"], bg.inputs["Color"])
+        bg.inputs["Color"].default_value = hex_rgba("#DCE8F6")
+        bg.inputs["Strength"].default_value = 1.95
         wnt.links.new(bg.outputs["Background"], wout.inputs["Surface"])
 
-        # Soft blue-neutral zenith sky fill above skylight
         add_area_light(
             "Studio_Skylight_SkyFill",
-            (0.0, 11.40, 0.0),
+            (0.0, 11.50, 0.0),
             (0.0, 0.0, 0.0),
-            energy=1750.0,
-            size_x=13.4,
-            size_y=11.2,
-            color_hex="#EAF2FC",
+            energy=1950.0,
+            size_x=13.6,
+            size_y=11.8,
+            color_hex="#ECF3FC",
             spread_deg=140.0,
         )
-        # Controlled directional sunlight raking diagonally through the 4x4 skylight coffer onto floor & walls
+        add_perimeter_cove_grazers(energy_side=480.0, color_hex="#F2F5FA")
+        add_area_light("Studio_Foyer_SunFill", (0.0, 8.8, 15.2), (0.0, 0.0, 11.5), energy=1800.0, size_x=12.0, size_y=6.0, color_hex="#FFF9EE", spread_deg=135.0)
+
+        # Controlled directional sunlight raking diagonally through the 5-bay transverse skylight blades
         sun_d = bpy.data.lights.new("Studio_Direct_Sun", type="SUN")
-        sun_d.energy = 3.1
-        sun_d.angle = math.radians(1.15)  # Realistic soft penumbra sun disc
-        sun_d.color = hex_rgba("#FFF5E4")[:3]
+        sun_d.energy = 3.20
+        sun_d.angle = math.radians(1.25)
+        sun_d.color = hex_rgba("#FFF4E2")[:3]
         sun_o = bpy.data.objects.new("Studio_Direct_Sun", sun_d)
-        # Sun coming from (+6.8, +15.0, +4.4) toward (-2.4, 0.0, -2.6) -> casts architectural coffer shadows on floor & left/rear walls!
-        sun_o.matrix_world = look_at_blender_native((6.8, 15.0, 4.4), (-2.4, 0.0, -2.6))
+        sun_o.matrix_world = look_at_blender_native((6.6, 15.5, 4.2), (-2.6, 0.0, -2.4))
         col_studio.objects.link(sun_o)
-        bpy.context.scene.view_settings.exposure = -0.30
+        bpy.context.scene.view_settings.exposure = -0.32
 
     elif scenario == "evening":
-        # Deep twilight blue exterior sky visible faintly through the overhead skylight
-        bg.inputs["Color"].default_value = hex_rgba("#182438")
-        bg.inputs["Strength"].default_value = 0.35
+        bg.inputs["Color"].default_value = hex_rgba("#162338")
+        bg.inputs["Strength"].default_value = 0.55
         wnt.links.new(bg.outputs["Background"], wout.inputs["Surface"])
 
-        # Subtle cool twilight sky glow from skylight
         add_area_light(
             "Studio_Twilight_Skylight",
-            (0.0, 11.10, 0.0),
+            (0.0, 11.30, 0.0),
             (0.0, 0.0, 0.0),
-            energy=280.0,
-            size_x=13.2,
-            size_y=11.0,
-            color_hex="#9DB4D4",
+            energy=240.0,
+            size_x=13.4,
+            size_y=11.6,
+            color_hex="#92ACD0",
             spread_deg=145.0,
         )
-        # Warm 3000K gallery track spotlights illuminating all 9 artwork anchors
+        # Warm 2950K architectural cove grazing along Left & Right floating canopy side coves
+        add_perimeter_cove_grazers(energy_side=320.0, color_hex="#FFEAD0")
+
+        # Selective 3000K gallery track spotlights aimed at all 9 exhibition anchors
         for spec in ARTWORK_SPECS:
             tx, ty, tz = spec["track_pos"]
             px, py, pz = spec["pos"]
             add_spot_light(
                 f"Studio_Spot_{spec['name']}",
-                (tx, ty - 0.06, tz),
-                (px, py + 0.05, pz),
-                energy=720.0,
-                spot_deg=40.0,
-                blend=0.45,
-                color_hex="#FFEED8",
+                (tx, ty - 0.04, tz),
+                (px, py + 0.04, pz),
+                energy=780.0,
+                spot_deg=38.0,
+                blend=0.48,
+                color_hex="#FFEDD6",
             )
-        # Soft warm central ceiling wash & perimeter circulation fill
-        add_area_light(
-            "Studio_Evening_Ambient",
-            (0.0, 8.85, 0.0),
-            (0.0, 0.0, 0.0),
-            energy=520.0,
-            size_x=9.0,
-            size_y=7.0,
-            color_hex="#FFEED8",
-            spread_deg=135.0,
-        )
-        bpy.context.scene.view_settings.exposure = 0.15
+        # Subtle warm central gallery circulation glow & foyer evening glow
+        add_area_light("Studio_Evening_Ambient", (0.0, 8.85, 0.0), (0.0, 0.0, 0.0), energy=360.0, size_x=8.5, size_y=6.5, color_hex="#FFEED8", spread_deg=135.0)
+        add_area_light("Studio_Foyer_Evening", (0.0, 8.5, 14.5), (0.0, 0.0, 11.5), energy=420.0, size_x=9.0, size_y=4.5, color_hex="#FFEBD2", spread_deg=130.0)
+        bpy.context.scene.view_settings.exposure = 0.12
 
 
 # ---------------------------------------------------------------------------
@@ -1689,9 +1710,9 @@ def setup_lighting_scenario(
 
 
 def ensure_demo_artworks(demo_dir: Path) -> List[Path]:
-    """Generate 9 original abstract architectural/editorial fine-art textures of varied aspect ratios."""
+    """Generate 9 museum-caliber contemporary abstract & luminous color-field paintings of varied aspect ratios."""
     demo_dir.mkdir(parents=True, exist_ok=True)
-    paths = [demo_dir / f"demo_art_{i:02d}.png" for i in range(1, 10)]
+    paths = [demo_dir / f"demo_art_v2_{i:02d}.png" for i in range(1, 10)]
     if all(p.exists() for p in paths):
         return paths
 
@@ -1710,100 +1731,89 @@ def ensure_demo_artworks(demo_dir: Path) -> List[Path]:
         ihdr = pystruct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
         path.write_bytes(b"\x89PNG\r\n\x1a\n" + ch(b"IHDR", ihdr) + ch(b"IDAT", zlib.compress(raw, 6)) + ch(b"IEND", b""))
 
-    # Curated fine-art minimalist abstract compositions (Rothko / Agnes Martin / Hiroshi Sugimoto / editorial inspired)
-    palettes = [
-        ((512, 680), "#EAE4D8", "#2B3A42", "#C47D56"),   # 01 Portrait warm terracotta & slate
-        ((820, 540), "#F0ECE3", "#1F2426", "#8A969C"),   # 02 Hero landscape Sugimoto horizon
-        ((512, 680), "#EBE6DC", "#5C6B5E", "#D6C4A8"),   # 03 Portrait botanical sage &linen
-        ((640, 640), "#EFECE6", "#3E352F", "#B59B7C"),   # 04 Square architectural monolith
-        ((760, 520), "#E8E4DC", "#27313B", "#C9B89E"),   # 05 Landscape deep indigo & sand
-        ((500, 680), "#F2EEE7", "#7A4E3D", "#DECBB4"),   # 06 Portrait ochre & sienna
-        ((760, 520), "#ECE8E0", "#303633", "#9BA399"),   # 07 Landscape mist & graphite
-        ((640, 640), "#F1EDE4", "#242220", "#C89D66"),   # 08 Square warm gold-ochre & charcoal
-        ((512, 680), "#EAE5DB", "#3D4A52", "#B8AFA2"),   # 09 Portrait Nordic slate & stone
-    ]
-
     def hex_u8(hx: str) -> "np.ndarray":
         h = hx.lstrip("#")
         return np.array([int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)], dtype=np.float64)
 
-    for idx, ((w, h), bg_h, fg1_h, fg2_h) in enumerate(palettes):
+    # Curated museum exhibition palette (inspired by luminous Rothko/Turrell/Sugimoto/contemporary color fields)
+    specs = [
+        ((540, 720), "#F2EEE6", "#1D4E6E", "#8FB8CC", "gradient_sky"),      # 01 Portrait cerulean sky field
+        ((960, 600), "#1E282C", "#3A6351", "#D49B54", "triptych_horizon"),  # 02 Hero panoramic botanical/amber abstraction
+        ((540, 720), "#EFEBE2", "#C97D3A", "#5C3A28", "luminous_orb"),      # 03 Portrait warm amber-ochre glow
+        ((640, 640), "#ECE8DF", "#26384A", "#93A8B8", "diagonal_light"),    # 04 Square architectural cobalt study
+        ((800, 540), "#F0ECE3", "#B87A3D", "#E6C88C", "luminous_orb"),      # 05 Landscape golden solstice field
+        ((520, 720), "#EAE6DC", "#2F443B", "#8FA394", "gradient_sky"),      # 06 Portrait deep forest mist
+        ((800, 540), "#EDE9E0", "#22313F", "#C48A5A", "triptych_horizon"),  # 07 Landscape twilight & sienna
+        ((640, 640), "#F1EDE4", "#6E473B", "#D8C2A8", "diagonal_light"),    # 08 Square terracotta monolith
+        ((540, 720), "#ECE7DD", "#354652", "#C8B698", "gradient_sky"),      # 09 Portrait warm stone & slate
+    ]
+
+    rng = np.random.default_rng(42)
+    for idx, ((w, h), bg_h, c1_h, c2_h, mode) in enumerate(specs):
         yy, xx = np.meshgrid(np.linspace(0.0, 1.0, h), np.linspace(0.0, 1.0, w), indexing="ij")
         bg = hex_u8(bg_h)
-        c1 = hex_u8(fg1_h)
-        c2 = hex_u8(fg2_h)
-        img = np.broadcast_to(bg, (h, w, 3)).copy()
+        c1 = hex_u8(c1_h)
+        c2 = hex_u8(c2_h)
+        # Subtle fine linen canvas micro-grain
+        grain = rng.normal(0.0, 2.2, size=(h, w, 1))
 
-        # Mat-board off-white border (9% margin)
-        in_art = (xx > 0.09) & (xx < 0.91) & (yy > 0.09) & (yy < 0.91)
-        ax = np.clip((xx - 0.09) / 0.82, 0.0, 1.0)
-        ay = np.clip((yy - 0.09) / 0.82, 0.0, 1.0)
+        margin = 0.045
+        in_art = (xx > margin) & (xx < 1.0 - margin) & (yy > margin) & (yy < 1.0 - margin)
+        ax = np.clip((xx - margin) / (1.0 - 2 * margin), 0.0, 1.0)
+        ay = np.clip((yy - margin) / (1.0 - 2 * margin), 0.0, 1.0)
 
-        if idx % 3 == 0:
-            # Minimalist architectural arch + horizon study
-            grad = 0.35 + 0.65 * ay
-            art = c2 * grad[..., None] * 0.85 + bg * 0.15
-            circle = ((ax - 0.5) ** 2 + (ay - 0.54) ** 2) < 0.075
-            band = ay > 0.64
-            art = np.where(band[..., None], c1, art)
-            art = np.where(circle[..., None], c2, art)
-        elif idx % 3 == 1:
-            # Serene Sugimoto-inspired sea/horizon tonal field
-            horizon = 1.0 / (1.0 + np.exp(-(ay - 0.52) * 38.0))
-            sky_tone = bg * 0.72 + c2 * 0.28 * (1.0 - ay[..., None] * 0.5)
-            sea_tone = c1 * (0.65 + 0.35 * (1.0 - ay[..., None]))
-            art = sky_tone * (1.0 - horizon[..., None]) + sea_tone * horizon[..., None]
+        if mode == "gradient_sky":
+            t = np.clip(ay ** 1.15, 0.0, 1.0)[..., None]
+            art = c1 * (1.0 - t) + c2 * t
+            glow = np.exp(-((ax - 0.5) ** 2 + (ay - 0.68) ** 2) / 0.14)[..., None]
+            art = art * (1.0 - 0.28 * glow) + bg * (0.28 * glow)
+        elif mode == "luminous_orb":
+            r2 = ((ax - 0.5) ** 2) / 0.11 + ((ay - 0.5) ** 2) / 0.15
+            glow = np.exp(-r2)[..., None]
+            art = c1 * (1.0 - glow) + c2 * glow
+        elif mode == "triptych_horizon":
+            wave = 0.52 + 0.06 * np.sin(ax * 6.28) + 0.03 * np.cos(ax * 15.0)
+            band = 1.0 / (1.0 + np.exp(-(ay - wave) * 24.0))[..., None]
+            tex_mod = (0.5 + 0.5 * np.sin(ax * 22.0) * np.cos(ay * 16.0))[..., None]
+            top = c1 * (0.72 + 0.28 * tex_mod) + c2 * 0.18 * (1.0 - ay[..., None])
+            bot = c2 * (0.55 + 0.45 * (1.0 - ay[..., None])) * 0.65 + bg * 0.20
+            art = top * (1.0 - band) + bot * band
         else:
-            # Geometric modernist diptych blocks
-            art = bg * 0.90
-            blk1 = (ax > 0.14) & (ax < 0.56) & (ay > 0.16) & (ay < 0.82)
-            blk2 = (ax > 0.48) & (ax < 0.86) & (ay > 0.34) & (ay < 0.86)
-            art = np.where(blk1[..., None], c2, art)
-            art = np.where(blk2[..., None], c1, art)
+            diag = np.clip(0.65 * ax + 0.45 * (1.0 - ay), 0.0, 1.0)[..., None]
+            art = c1 * (1.0 - diag) + c2 * diag
 
-        img = np.where(in_art[..., None], art, img)
+        img = np.where(in_art[..., None], art + grain, bg)
         save_rgb(paths[idx], img)
 
     return paths
 
 
 def populate_exhibition_demo(col_demo: bpy.types.Collection) -> None:
-    """Temporarily mount 9 varied-aspect-ratio framed artworks + 2 minimalist museum benches in `col_demo`."""
+    """Temporarily mount 9 varied-aspect-ratio artworks + 2 minimalist oak gallery benches in `col_demo`."""
     demo_dir = WORK_DIR / "demo_artwork"
     art_paths = ensure_demo_artworks(demo_dir)
 
-    #Varied realistic gallery frame dimensions (width, height in meters) matching each artwork's aspect ratio
     dims = [
         (1.65, 2.20),  # Back_01 portrait
-        (3.20, 2.10),  # Back_02 hero landscape
+        (3.40, 2.12),  # Back_02 hero panoramic canvas
         (1.65, 2.20),  # Back_03 portrait
         (1.90, 1.90),  # Left_01 square
-        (2.55, 1.75),  # Left_02 landscape
-        (1.60, 2.15),  # Left_03 portrait
-        (2.55, 1.75),  # Right_01 landscape
+        (2.55, 1.72),  # Left_02 landscape
+        (1.58, 2.18),  # Left_03 portrait
+        (2.55, 1.72),  # Right_01 landscape
         (1.90, 1.90),  # Right_02 square
         (1.65, 2.20),  # Right_03 portrait
     ]
 
     mat_frame = bpy.data.materials.new("Demo_Mat_Frame")
     _ensure_nodes(mat_frame)
-    mat_frame.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = hex_rgba("#2D2926")
-    mat_frame.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.48
+    mat_frame.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = hex_rgba("#38312B")
+    mat_frame.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.46
 
     for idx, (spec, (fw, fh), img_p) in enumerate(zip(ARTWORK_SPECS, dims, art_paths)):
-        anchor = bpy.data.objects[spec["name"]]
         hw, hh = fw * 0.5, fh * 0.5
-        fd = 0.042  # 42 mm museum walnut/ash box frame depth
-        ft = 0.026  # 26 mm frame moulding width
-
-        # Build frame & canvas directly in anchor local XY (+Z outward), then assign `anchor.matrix_world`!
-        bm_f = bmesh.new()
-        def add_local_box(bm_t, x0, x1, y0, y1, z0, z1):
-            # In Blender Empty local space before R_B2G? Wait: remember M_b = R_G2B @ M_g @ R_B2G!
-            # So to place a point in anchor glTF local (lx, ly, lz), its glTF world coord is M_g @ (lx, ly, lz, 1)!
-            pass
-
-        # Compute glTF world transform M_g directly from `spec["pos"]` and `spec["axes"]`!
+        fd = 0.044
+        ft = 0.022
         ax_x, ax_y, ax_z = [Vector(a) for a in spec["axes"]]
         origin_g = Vector(spec["pos"])
 
@@ -1811,7 +1821,6 @@ def populate_exhibition_demo(col_demo: bpy.types.Collection) -> None:
             p = origin_g + ax_x * lx + ax_y * ly + ax_z * lz
             return (p.x, p.y, p.z)
 
-        # Frame mesh (4 perimeter bars)
         fm = ArchMesh(f"Demo_Frame_{idx+1:02d}", uv_scale_meters=1.0)
         bars = [
             (-hw - ft, hw + ft, hh, hh + ft, 0.0, fd),
@@ -1832,13 +1841,12 @@ def populate_exhibition_demo(col_demo: bpy.types.Collection) -> None:
             fm.add_quad_g(p000, p100, p101, p001)
             fm.add_quad_g(p001, p101, p111, p011)
             fm.add_quad_g(p100, p000, p010, p110)
-            fm.add_quad_g(p101, p100, p110, p111)
+            fm.add_quad_g(p101, p100, v110 := p110, p111)
             fm.add_quad_g(p000, p001, p011, p010)
         fm.finalize(None, col_demo, mat_frame)
 
-        # Artwork front plane with exact 0..1 UVs
         bm_a = bmesh.new()
-        z_art = 0.028
+        z_art = 0.032
         v0 = bm_a.verts.new(g2b_pt(*local_to_gltf(-hw, -hh, z_art)))
         v1 = bm_a.verts.new(g2b_pt(*local_to_gltf(hw, -hh, z_art)))
         v2 = bm_a.verts.new(g2b_pt(*local_to_gltf(hw, hh, z_art)))
@@ -1854,7 +1862,7 @@ def populate_exhibition_demo(col_demo: bpy.types.Collection) -> None:
         mat_a = bpy.data.materials.new(f"Demo_Mat_Art_{idx+1:02d}")
         nt = _ensure_nodes(mat_a)
         bsdf = nt.nodes["Principled BSDF"]
-        bsdf.inputs["Roughness"].default_value = 0.62
+        bsdf.inputs["Roughness"].default_value = 0.56
         tex_n = nt.nodes.new("ShaderNodeTexImage")
         tex_n.image = _load_img(img_p, non_color=False)
         nt.links.new(tex_n.outputs["Color"], bsdf.inputs["Base Color"])
@@ -1862,17 +1870,17 @@ def populate_exhibition_demo(col_demo: bpy.types.Collection) -> None:
         o_art = bpy.data.objects.new(f"Demo_Art_{idx+1:02d}", m_art)
         col_demo.objects.link(o_art)
 
-    # Minimalist oak museum gallery benches at Anchor_Place_Bench_01 & 02 (temporary scale reference only)
+    # Minimalist architectural white-oak gallery benches at Anchor_Place_Bench_01 & 02 (scale reference only)
     mat_oak = bpy.data.materials.new("Demo_Mat_Bench_Oak")
     _ensure_nodes(mat_oak)
-    mat_oak.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = hex_rgba("#C4AE8E")
-    mat_oak.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.65
+    mat_oak.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = hex_rgba("#C7B293")
+    mat_oak.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.62
 
     for bx in (-3.40, 3.40):
         bench = ArchMesh(f"Demo_Bench_{'L' if bx < 0 else 'R'}", uv_scale_meters=1.0)
-        bench.add_box_g(bx - 1.35, bx + 1.35, 0.36, 0.44, 1.52, 2.08, bevel=0.004)
-        bench.add_box_g(bx - 1.15, bx - 0.98, 0.0, 0.36, 1.56, 2.04, bevel=0.003)
-        bench.add_box_g(bx + 0.98, bx + 1.15, 0.0, 0.36, 1.56, 2.04, bevel=0.003)
+        bench.add_box_g(bx - 1.40, bx + 1.40, 0.37, 0.44, 1.54, 2.06, bevel=0.004)
+        bench.add_box_g(bx - 1.16, bx - 1.02, 0.0, 0.37, 1.58, 2.02, bevel=0.003)
+        bench.add_box_g(bx + 1.02, bx + 1.16, 0.0, 0.37, 1.58, 2.02, bevel=0.003)
         bench.finalize(None, col_demo, mat_oak)
 
 
@@ -1898,7 +1906,6 @@ def render_camera_view(
     cam_data.clip_end = 120.0
 
     cam_obj = bpy.data.objects.new("Render_Cam", cam_data)
-    # Keep verticals plumb when shift_y != 0 by aiming horizontally at eye level when desired
     cam_obj.matrix_world = look_at_blender_native(eye_g, target_g)
     target_col = col_studio or bpy.context.scene.collection
     target_col.objects.link(cam_obj)
@@ -1914,7 +1921,11 @@ def render_camera_view(
 # ---------------------------------------------------------------------------
 
 
-def build_museum_scene(clay_mode: bool, detailed: bool) -> Tuple[bpy.types.Collection, bpy.types.Collection]:
+def build_museum_scene(
+    clay_mode: bool,
+    detailed: bool,
+    force_textures: bool = False,
+) -> Tuple[bpy.types.Collection, bpy.types.Collection]:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
     scene.unit_settings.system = "METRIC"
@@ -1934,7 +1945,6 @@ def build_museum_scene(clay_mode: bool, detailed: bool) -> Tuple[bpy.types.Colle
     col_export.children.link(col_fix)
     col_export.children.link(col_anc)
 
-    # Root hierarchy nodes
     root = _new_empty("Museum_Open_Hall", None, col_export, Matrix.Identity(4), 1.0)
     root["assetId"] = "architecture/museum-open-hall"
     root["coordinateSystem"] = "glTF-Y-up-meters"
@@ -1942,14 +1952,14 @@ def build_museum_scene(clay_mode: bool, detailed: bool) -> Tuple[bpy.types.Colle
         "interiorMin": [-11.65, 0.0, -8.65],
         "interiorMax": [11.65, 2.60, 8.65],
         "entrancePortalMin": [-2.50, 0.0, 8.65],
-        "entrancePortalMax": [2.50, 2.60, 10.20],
+        "entrancePortalMax": [2.50, 2.60, 10.60],
     }
 
     arch_grp = _new_empty("Architecture", root, col_arch, Matrix.Identity(4), 0.6)
     sky_grp = _new_empty("Skylight", root, col_sky, Matrix.Identity(4), 0.6)
     fix_grp = _new_empty("Lighting_Fixtures", root, col_fix, Matrix.Identity(4), 0.6)
 
-    mats = create_materials(clay_mode=clay_mode)
+    mats = create_materials(clay_mode=clay_mode, force_textures=force_textures)
 
     build_floor(arch_grp, col_arch, mats["Mat_Floor_Concrete"], detailed=detailed)
     build_walls_and_portal(
@@ -1978,9 +1988,12 @@ def build_museum_scene(clay_mode: bool, detailed: bool) -> Tuple[bpy.types.Colle
     return col_export, col_studio
 
 
-def export_canonical_glb(glb_path: Path, col_studio: bpy.types.Collection, col_demo: Optional[bpy.types.Collection] = None) -> None:
+def export_canonical_glb(
+    glb_path: Path,
+    col_studio: bpy.types.Collection,
+    col_demo: Optional[bpy.types.Collection] = None,
+) -> None:
     """Export only the canonical `Museum_Export` hierarchy to a self-contained GLB."""
-    # Exclude Studio_Preview and any temporary Demo collection from view layer during export
     vl = bpy.context.view_layer
     studio_lc = vl.layer_collection.children.get(col_studio.name)
     demo_lc = vl.layer_collection.children.get(col_demo.name) if col_demo else None
@@ -1989,7 +2002,6 @@ def export_canonical_glb(glb_path: Path, col_studio: bpy.types.Collection, col_d
     if demo_lc:
         demo_lc.exclude = True
 
-    # Ensure Skylight_Glass uses direct Principled BSDF alpha blend for clean glTF export
     mg = bpy.data.materials.get("Mat_Skylight_Glass")
     if mg and mg.node_tree is not None:
         nt = mg.node_tree
@@ -2063,6 +2075,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate Open Skylight Museum Hall")
     parser.add_argument("--stage", choices=["massing", "detail", "final"], default="final")
     parser.add_argument("--export-only", action="store_true", help="Build textures, blend, and GLB without full render suite")
+    parser.add_argument("--force-textures", action="store_true", help="Regenerate coherent PBR textures in textures/")
     return parser.parse_args(argv)
 
 
@@ -2074,12 +2087,11 @@ def main() -> None:
         _, col_studio = build_museum_scene(clay_mode=True, detailed=False)
         configure_cycles(samples=48, res_x=1280, res_y=800)
         setup_lighting_scenario("soft_daylight", col_studio)
-        render_camera_view(out_dir / "01_massing_entrance.png", (0.0, 1.65, 8.6), (0.0, 2.5, -9.0), lens_mm=22.0, shift_y=0.05, col_studio=col_studio)
-        render_camera_view(out_dir / "02_massing_center.png", (0.0, 1.65, 2.2), (0.0, 2.8, -9.0), lens_mm=24.0, shift_y=0.04, col_studio=col_studio)
-        render_camera_view(out_dir / "03_massing_rear_to_entrance.png", (0.0, 1.65, -7.8), (0.0, 2.5, 9.0), lens_mm=22.0, shift_y=0.04, col_studio=col_studio)
-        render_camera_view(out_dir / "04_massing_side.png", (8.2, 1.65, 1.5), (-12.0, 2.6, -2.0), lens_mm=24.0, shift_y=0.04, col_studio=col_studio)
-        # Top-down architectural roof/skylight perspective looking into the hall through the skylight
-        render_camera_view(out_dir / "05_massing_topdown.png", (0.0, 24.5, 3.0), (0.0, 0.0, 0.0), lens_mm=24.0, col_studio=col_studio)
+        render_camera_view(out_dir / "01_massing_entrance.png", (0.0, 1.65, 8.5), (0.0, 1.65, -9.0), lens_mm=21.0, shift_y=0.095, col_studio=col_studio)
+        render_camera_view(out_dir / "02_massing_center.png", (0.0, 1.65, 2.2), (0.0, 1.65, -9.0), lens_mm=23.0, shift_y=0.090, col_studio=col_studio)
+        render_camera_view(out_dir / "03_massing_rear_to_entrance.png", (0.0, 1.65, -7.8), (0.0, 1.65, 9.0), lens_mm=21.0, shift_y=0.085, col_studio=col_studio)
+        render_camera_view(out_dir / "04_massing_side.png", (8.2, 1.65, 1.5), (-12.0, 1.65, -2.0), lens_mm=23.0, shift_y=0.085, col_studio=col_studio)
+        render_camera_view(out_dir / "05_massing_topdown.png", (0.0, 25.0, 2.8), (0.0, 0.0, 0.0), lens_mm=24.0, col_studio=col_studio)
         print("Stage A massing studies rendered to:", out_dir)
         return
 
@@ -2088,18 +2100,18 @@ def main() -> None:
         _, col_studio = build_museum_scene(clay_mode=True, detailed=True)
         configure_cycles(samples=64, res_x=1440, res_y=900)
         setup_lighting_scenario("direct_sun", col_studio)
-        render_camera_view(out_dir / "01_detail_entrance.png", (0.0, 1.65, 8.4), (0.0, 2.6, -9.0), lens_mm=22.0, shift_y=0.05, col_studio=col_studio)
-        render_camera_view(out_dir / "02_detail_skylight.png", (0.0, 1.65, 3.8), (0.0, 9.6, -2.2), lens_mm=20.0, col_studio=col_studio)
-        render_camera_view(out_dir / "03_detail_portal_and_reveal.png", (-4.8, 1.60, 2.4), (1.8, 2.2, 9.4), lens_mm=26.0, shift_y=0.03, col_studio=col_studio)
-        render_camera_view(out_dir / "04_detail_wall_floor_junction.png", (-8.5, 0.95, 3.2), (-12.0, 0.35, -3.5), lens_mm=35.0, col_studio=col_studio)
+        render_camera_view(out_dir / "01_detail_entrance.png", (0.0, 1.65, 8.4), (0.0, 1.65, -9.0), lens_mm=21.0, shift_y=0.105, col_studio=col_studio)
+        render_camera_view(out_dir / "02_detail_skylight_and_coves.png", (0.0, 1.65, 5.2), (0.0, 9.8, -1.8), lens_mm=20.0, col_studio=col_studio)
+        render_camera_view(out_dir / "03_detail_portal_and_reveal.png", (-4.8, 1.65, 2.2), (1.6, 1.65, 9.6), lens_mm=25.0, shift_y=0.055, col_studio=col_studio)
+        render_camera_view(out_dir / "04_detail_wall_floor_junction.png", (-8.5, 0.90, 3.2), (-12.0, 0.30, -3.5), lens_mm=36.0, col_studio=col_studio)
         print("Stage B clay detailing studies rendered to:", out_dir)
         return
 
     # Stage `final`: Full PBR Materials, GLB Export, Blend Save, and 12 Visualization Renders
-    ensure_pbr_textures(force=False)
-    _, col_studio = build_museum_scene(clay_mode=False, detailed=True)
+    ensure_pbr_textures(force=args.force_textures)
+    _, col_studio = build_museum_scene(clay_mode=False, detailed=True, force_textures=False)
 
-    # First export clean canonical `model.glb` before attaching Cycles-only shadow shader nodes or demo exhibits
+    # Export clean canonical `model.glb` before attaching Cycles-only shadow shader nodes or demo exhibits
     glb_path = ASSET_DIR / "model.glb"
     export_canonical_glb(glb_path, col_studio)
 
@@ -2107,18 +2119,16 @@ def main() -> None:
     make_glass_cycles_friendly()
     setup_lighting_scenario("soft_daylight", col_studio)
 
-    # Set a reproducible 2-point tilt-shift Studio_Preview hero camera in `model.blend` (plumb verticals)
     hero_cam_d = bpy.data.cameras.new("Preview_Camera")
-    hero_cam_d.lens = 22.0
+    hero_cam_d.lens = 21.0
     hero_cam_d.sensor_width = 36.0
-    hero_cam_d.shift_y = 0.082
+    hero_cam_d.shift_y = 0.115
     hero_cam_o = bpy.data.objects.new("Preview_Camera", hero_cam_d)
-    hero_cam_o.matrix_world = look_at_blender_native((0.0, 1.65, 8.2), (0.0, 1.65, -9.0))
+    hero_cam_o.matrix_world = look_at_blender_native((0.0, 1.65, 8.4), (0.0, 1.65, -9.0))
     col_studio.objects.link(hero_cam_o)
     bpy.context.scene.camera = hero_cam_o
 
     blend_path = ASSET_DIR / "model.blend"
-    # Save dummy first or make all external texture paths strictly relative (`//textures/...`) to `ASSET_DIR`
     for img in bpy.data.images:
         if img.filepath:
             try:
@@ -2133,29 +2143,32 @@ def main() -> None:
         return
 
     # Render all 12 required Blender visualizations (Section 18) + catalog `preview.webp`
-    # Uses level optical axes (`target_y == eye_y`) + vertical lens shift (`shift_y`) for plumb architectural verticals!
+    # Uses level optical axes (`target_y == eye_y`) + vertical lens shift (`shift_y`) so architectural
+    # verticals remain 100% plumb while framing the monumental 9 m floating canopy & 5-bay skylight coffer!
     renders_dir = WORK_DIR / "renders"
-    configure_cycles(samples=80, res_x=1600, res_y=1000)
+    configure_cycles(samples=72, res_x=1600, res_y=1000)
 
     # Scenario A — Soft Daylight (Views 1..8, 12)
     setup_lighting_scenario("soft_daylight", col_studio)
-    render_camera_view(renders_dir / "01_empty_entrance.png", (0.0, 1.65, 8.2), (0.0, 1.65, -9.0), lens_mm=22.0, shift_y=0.082, col_studio=col_studio)
-    render_camera_view(renders_dir / "02_empty_center.png", (0.0, 1.65, 2.0), (0.0, 1.65, -9.0), lens_mm=23.0, shift_y=0.085, col_studio=col_studio)
-    render_camera_view(renders_dir / "03_left_exhibition_wall.png", (4.8, 1.65, 1.2), (-12.0, 1.65, -1.2), lens_mm=24.0, shift_y=0.072, col_studio=col_studio)
-    render_camera_view(renders_dir / "04_right_exhibition_wall.png", (-4.8, 1.65, 1.2), (12.0, 1.65, -1.2), lens_mm=24.0, shift_y=0.072, col_studio=col_studio)
-    render_camera_view(renders_dir / "05_rear_exhibition_wall.png", (0.0, 1.65, -0.8), (0.0, 1.65, -9.0), lens_mm=24.0, shift_y=0.078, col_studio=col_studio)
-    render_camera_view(renders_dir / "06_skylight_and_ceiling.png", (0.0, 1.65, 4.4), (0.0, 9.7, -1.6), lens_mm=21.0, col_studio=col_studio)
-    render_camera_view(renders_dir / "07_floor_and_wall_material_detail.png", (-8.8, 0.85, 2.6), (-12.0, 0.45, -3.2), lens_mm=38.0, col_studio=col_studio)
-    render_camera_view(renders_dir / "08_soft_daylight_environment.png", (-5.6, 1.65, 6.8), (2.2, 1.65, -9.0), lens_mm=22.0, shift_y=0.080, col_studio=col_studio)
-    render_camera_view(renders_dir / "12_human_eye_navigation.png", (2.8, 1.60, 4.6), (-4.2, 1.60, -9.0), lens_mm=30.0, shift_y=0.045, col_studio=col_studio)
+    render_camera_view(renders_dir / "01_empty_entrance.png", (0.0, 1.65, 8.4), (0.0, 1.65, -9.0), lens_mm=20.0, shift_y=0.125, col_studio=col_studio)
+    render_camera_view(renders_dir / "02_empty_center.png", (0.0, 1.65, 3.6), (0.0, 1.65, -9.0), lens_mm=20.5, shift_y=0.135, col_studio=col_studio)
+    render_camera_view(renders_dir / "03_left_exhibition_wall.png", (5.6, 1.65, 1.2), (-12.0, 1.65, -1.2), lens_mm=22.0, shift_y=0.098, col_studio=col_studio)
+    render_camera_view(renders_dir / "04_right_exhibition_wall.png", (-5.6, 1.65, 1.2), (12.0, 1.65, -1.2), lens_mm=22.0, shift_y=0.098, col_studio=col_studio)
+    render_camera_view(renders_dir / "05_rear_exhibition_wall.png", (0.0, 1.65, 1.4), (0.0, 1.65, -9.0), lens_mm=21.5, shift_y=0.115, col_studio=col_studio)
+    render_camera_view(renders_dir / "06_skylight_and_ceiling.png", (0.0, 1.65, 5.2), (0.0, 9.8, -1.4), lens_mm=20.0, col_studio=col_studio)
+    render_camera_view(renders_dir / "07_floor_and_wall_material_detail.png", (-8.6, 0.82, 2.8), (-12.0, 0.42, -3.2), lens_mm=38.0, col_studio=col_studio)
+    render_camera_view(renders_dir / "08_soft_daylight_environment.png", (-4.8, 1.65, 7.6), (1.6, 1.65, -9.0), lens_mm=20.5, shift_y=0.118, col_studio=col_studio)
+    render_camera_view(renders_dir / "12_human_eye_navigation.png", (2.8, 1.60, 5.4), (-3.8, 1.60, -9.0), lens_mm=27.0, shift_y=0.075, col_studio=col_studio)
 
-    # Scenario B — Direct Sunlight (View 9 + Hero Catalog Preview)
+    # Scenario B — Direct Sunlight (View 9)
     setup_lighting_scenario("direct_sun", col_studio)
-    render_camera_view(renders_dir / "09_direct_sunlight_environment.png", (-4.6, 1.65, 7.2), (1.6, 1.65, -9.0), lens_mm=22.0, shift_y=0.082, col_studio=col_studio)
+    render_camera_view(renders_dir / "09_direct_sunlight_environment.png", (-4.4, 1.65, 7.8), (1.4, 1.65, -9.0), lens_mm=21.0, shift_y=0.112, col_studio=col_studio)
+    # Also render symmetrical axial direct-sunlight overview to compare for catalog hero preview!
+    render_camera_view(renders_dir / "09b_direct_sunlight_axial.png", (0.0, 1.65, 8.4), (0.0, 1.65, -9.0), lens_mm=21.0, shift_y=0.115, col_studio=col_studio)
 
     # Scenario C — Evening Exhibition (View 10 — empty architectural evening)
     setup_lighting_scenario("evening", col_studio)
-    render_camera_view(renders_dir / "10_evening_exhibition_environment.png", (-4.2, 1.65, 6.8), (1.4, 1.65, -9.0), lens_mm=22.0, shift_y=0.080, col_studio=col_studio)
+    render_camera_view(renders_dir / "10_evening_exhibition_environment.png", (-4.2, 1.65, 7.2), (1.4, 1.65, -9.0), lens_mm=21.0, shift_y=0.105, col_studio=col_studio)
 
     # Stage E — Temporary 9-Artwork Exhibition Demonstration (View 11 — Daylight & Evening)
     col_demo = bpy.data.collections.new("Demo_Exhibition")
@@ -2167,24 +2180,24 @@ def main() -> None:
         tx, ty, tz = spec["track_pos"]
         px, py, pz = spec["pos"]
         ld = bpy.data.lights.new(f"Demo_DaySpot_{spec['name']}", type="SPOT")
-        ld.energy = 320.0
-        ld.spot_size = math.radians(40.0)
-        ld.spot_blend = 0.45
+        ld.energy = 340.0
+        ld.spot_size = math.radians(38.0)
+        ld.spot_blend = 0.48
         ld.color = hex_rgba("#FFF5E6")[:3]
         lo = bpy.data.objects.new(ld.name, ld)
-        lo.matrix_world = look_at_blender_native((tx, ty - 0.06, tz), (px, py, pz))
+        lo.matrix_world = look_at_blender_native((tx, ty - 0.04, tz), (px, py, pz))
         col_demo.objects.link(lo)
 
-    render_camera_view(renders_dir / "11_nine_artwork_exhibition.png", (0.0, 1.65, 7.8), (0.0, 1.65, -9.0), lens_mm=22.0, shift_y=0.075, col_studio=col_studio)
+    render_camera_view(renders_dir / "11_nine_artwork_exhibition.png", (0.0, 1.65, 8.2), (0.0, 1.65, -9.0), lens_mm=21.0, shift_y=0.110, col_studio=col_studio)
     setup_lighting_scenario("evening", col_studio)
-    render_camera_view(renders_dir / "11b_nine_artwork_evening.png", (-4.4, 1.65, 6.8), (1.6, 1.65, -9.0), lens_mm=22.0, shift_y=0.075, col_studio=col_studio)
+    render_camera_view(renders_dir / "11b_nine_artwork_evening.png", (-4.2, 1.65, 7.2), (1.4, 1.65, -9.0), lens_mm=21.0, shift_y=0.105, col_studio=col_studio)
 
-    # Convert the flagship architectural view (`09_direct_sunlight_environment.png`) to catalog `preview.webp`
+    # Convert the flagship architectural view (`09b_direct_sunlight_axial.png`) to catalog `preview.webp`
     preview_webp = ASSET_DIR / "preview.webp"
     cwebp = shutil.which("cwebp")
     if cwebp:
         subprocess.run(
-            [cwebp, "-q", "90", str(renders_dir / "09_direct_sunlight_environment.png"), "-o", str(preview_webp)],
+            [cwebp, "-q", "90", str(renders_dir / "09b_direct_sunlight_axial.png"), "-o", str(preview_webp)],
             check=True,
         )
     print("Completed all 12 architectural renders and catalog preview.webp")

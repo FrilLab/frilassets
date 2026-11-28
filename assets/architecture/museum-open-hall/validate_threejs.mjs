@@ -403,7 +403,7 @@ window.__runValidation = async function () {
     const insideWalkable =
       Math.abs(p.x) <= 11.65 &&
       p.z >= -8.65 &&
-      (p.z <= 8.65 || (Math.abs(p.x) <= 2.50 && p.z <= 10.20)) &&
+      (p.z <= 8.65 || (Math.abs(p.x) <= 2.50 && p.z <= 10.60)) &&
       Math.abs(p.y - 1.60) < 0.02;
     navChecks.push({
       name: nm,
@@ -520,7 +520,7 @@ window.__runValidation = async function () {
   const isWalkable = (x, y, z) => {
     if (y < 0.0 || y > 2.60) return false;
     if (x >= -11.65 && x <= 11.65 && z >= -8.65 && z <= 8.65) return true;
-    if (x >= -2.50 && x <= 2.50 && z > 8.65 && z <= 10.20) return true;
+    if (x >= -2.50 && x <= 2.50 && z > 8.65 && z <= 10.60) return true;
     return false;
   };
   const collisionContractChecks = {

@@ -1,7 +1,7 @@
 {
   "id": "architecture/museum-open-hall",
   "name": "Open Skylight Museum Hall",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "status": "draft",
   "assetLicense": null,
   "codeLicense": "MIT",
@@ -13,7 +13,7 @@
       "script": "generate.py",
       "thirdPartyContent": false,
       "sourcingDecision": "create",
-      "sourcingNotes": "Searched local FrilAssets packages and external CC0 repositories (Poly Haven, ambientCG, Sketchfab) on 2026-11-27; see notes.md for candidate URLs, license evidence, and visual inspection rejections. All architectural geometry, semantic anchors, and coherent periodic PBR maps are 100% original and deterministically generated from generate.py."
+      "sourcingNotes": "Searched local FrilAssets packages and external CC0 repositories (Poly Haven, ambientCG, Sketchfab) on 2026-11-27 and re-verified on 2026-11-28 (including visual inspection of Poly Haven beige_wall_001 and concrete_floor_02 previews); see notes.md for candidate URLs, license evidence, and rejection rationale. All architectural geometry, semantic anchors, and coherent periodic PBR maps are 100% original and deterministically generated from generate.py."
     }
   ],
   "files": {
@@ -25,6 +25,7 @@
     "validateBlender": "validate_blender.py",
     "validateThreejs": "validate_threejs.mjs",
     "textures": [
+      "textures/wall_plaster_basecolor.png",
       "textures/wall_plaster_normal.png",
       "textures/wall_plaster_roughness.png",
       "textures/floor_concrete_basecolor.png",
@@ -55,7 +56,7 @@
     "unit": "meters",
     "axes": {
       "X": "Hall width (-12.00 m Wall_Left to +12.00 m Wall_Right)",
-      "Y": "Vertical height (0.00 m interior finished floor to +9.00 m primary ceiling soffit; +10.35 m skylight glass)",
+      "Y": "Vertical height (0.00 m interior finished floor to +9.00 m floating ceiling canopy soffit; +9.76 m side daylight coves; +10.68 m skylight glass)",
       "Z": "Hall depth (-9.00 m Wall_Back main exhibition wall to +9.00 m Wall_Entrance)"
     },
     "origin": [0.0, 0.0, 0.0],
@@ -69,25 +70,27 @@
     },
     "structuralShell": {
       "exteriorWidth": 24.8,
-      "exteriorDepthWithPortal": 19.6,
+      "exteriorDepthWithPortal": 20.0,
       "wallThickness": 0.4,
-      "entrancePortalDepth": 1.2,
+      "entrancePortalDepth": 1.6,
+      "sideDaylightCoveWidth": 0.68,
+      "sideDaylightCoveTopY": 9.76,
       "floorThickness": 0.32,
-      "overallHeight": 10.84
+      "overallHeight": 11.22
     },
     "openings": {
       "mainEntrance": {
         "width": 5.6,
-        "height": 4.6,
-        "frameThickness": 0.06
+        "height": 4.8,
+        "frameThickness": 0.055
       },
       "primarySkylight": {
         "widthAtCeiling": 13.6,
-        "depthAtCeiling": 11.4,
-        "widthAtWellTop": 13.76,
-        "depthAtWellTop": 11.56,
-        "glazingElevationY": 10.35,
-        "bays": "4x4 (16 panes)"
+        "depthAtCeiling": 11.8,
+        "widthAtWellTop": 13.88,
+        "depthAtWellTop": 12.08,
+        "glazingElevationY": 10.68,
+        "bays": "5 transverse bays (3x5 = 15 laminated panes)"
       }
     }
   },
@@ -115,28 +118,28 @@
   ],
   "collisionContract": {
     "walkableInteriorAabb": { "min": [-11.65, 0.0, -8.65], "max": [11.65, 2.6, 8.65] },
-    "entrancePortalWalkableAabb": { "min": [-2.5, 0.0, 8.65], "max": [2.5, 2.6, 10.2] },
+    "entrancePortalWalkableAabb": { "min": [-2.5, 0.0, 8.65], "max": [2.5, 2.6, 10.6] },
     "wallColliderAabbs": [
       { "name": "Wall_Back", "min": [-12.4, 0.0, -9.4], "max": [12.4, 2.6, -9.0] },
       { "name": "Wall_Left", "min": [-12.4, 0.0, -9.0], "max": [-12.0, 2.6, 9.0] },
       { "name": "Wall_Right", "min": [12.0, 0.0, -9.0], "max": [12.4, 2.6, 9.0] },
-      { "name": "Wall_Entrance_Left", "min": [-12.4, 0.0, 9.0], "max": [-2.8, 2.6, 10.2] },
-      { "name": "Wall_Entrance_Right", "min": [2.8, 0.0, 9.0], "max": [12.4, 2.6, 10.2] }
+      { "name": "Wall_Entrance_Left", "min": [-12.4, 0.0, 9.0], "max": [-2.8, 2.6, 10.6] },
+      { "name": "Wall_Entrance_Right", "min": [2.8, 0.0, 9.0], "max": [12.4, 2.6, 10.6] }
     ]
   },
   "nodeCount": 70,
   "meshCount": 16,
   "materialCount": 9,
-  "triangleCount": 6036,
-  "vertexCount": 10786,
-  "glbSizeBytes": 4682292,
-  "glbSha256": "517029ce989a2c41c28c78112b4bbc6b2f76d9cf37c18e18f9577f656f01063a",
+  "triangleCount": 5740,
+  "vertexCount": 10218,
+  "glbSizeBytes": 4560896,
+  "glbSha256": "c233695276b3021fbe094813516931bc9513fa3ee8d1d519fd4b31da4b1cdad9",
   "performance": {
-    "threejsGlbLoadTimeMs": 38.5,
-    "threejsAvgFrameTimeMs": 0.102,
+    "threejsGlbLoadTimeMs": 38.9,
+    "threejsAvgFrameTimeMs": 0.13,
     "threejsP95FrameTimeMs": 0.2,
     "threejsDrawCallsShadowAndMainPass": 33,
-    "estimatedGpuTextureMemoryBytes": 16777214,
+    "estimatedGpuTextureMemoryBytes": 22369619,
     "measurementEnvironment": "Headless Chromium WebGL (Playwright, Apple Silicon Metal/ANGLE, 1600x1000 viewport, 2048x2048 PCFSoftShadowMap); physical mobile device hardware not tested."
   },
   "validation": {

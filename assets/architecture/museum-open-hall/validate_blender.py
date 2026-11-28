@@ -106,12 +106,37 @@ def main() -> None:
         "Anchor_Navigation_Left",
         "Anchor_Navigation_Right",
     ] + [f"Anchor_Navigation_Artwork_{i:02d}" for i in range(1, 10)]
+    required_place_anchors = [
+        "Anchor_Place_Central_Installation",
+        "Anchor_Place_Pedestal_01",
+        "Anchor_Place_Pedestal_02",
+        "Anchor_Place_Bench_01",
+        "Anchor_Place_Bench_02",
+        "Anchor_Place_Info_Stand",
+        "Anchor_Place_Invitation_Display",
+        "Anchor_Place_Partition_01",
+        "Anchor_Place_Partition_02",
+    ]
+    required_light_anchors = [
+        f"Anchor_Light_{wall}_{i:02d}"
+        for wall in ("Back", "Left", "Right")
+        for i in (1, 2, 3)
+    ] + [
+        "Anchor_Light_Center_01",
+        "Anchor_Light_Center_02",
+        "Anchor_Light_Ambient_01",
+        "Anchor_Light_Ambient_02",
+        "Anchor_Light_Ambient_03",
+        "Anchor_Light_Ambient_04",
+    ]
 
     missing_groups = [n for n in required_groups if n not in node_names]
     missing_meshes = [n for n in required_meshes if n not in node_names]
     missing_mats = [m for m in required_materials if m not in mat_names]
     missing_art = [a for a in required_art_anchors if a not in node_names]
     missing_nav = [n for n in required_nav_anchors if n not in node_names]
+    missing_place = [p for p in required_place_anchors if p not in node_names]
+    missing_light = [l for l in required_light_anchors if l not in node_names]
 
     forbidden_leaks = [
         n for n in node_names
@@ -122,6 +147,8 @@ def main() -> None:
     assert not missing_mats, f"Missing semantic materials: {missing_mats}"
     assert not missing_art, f"Missing artwork anchors: {missing_art}"
     assert not missing_nav, f"Missing navigation anchors: {missing_nav}"
+    assert not missing_place, f"Missing placement anchors: {missing_place}"
+    assert not missing_light, f"Missing lighting anchors: {missing_light}"
     assert not forbidden_leaks, f"Authoring/demo objects leaked into GLB: {forbidden_leaks}"
     assert "cameras" not in gltf_json, "Cameras leaked into canonical GLB"
 
